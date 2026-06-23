@@ -10117,6 +10117,9 @@ void upc_parse_session_establishment_request(uint8_t* buffer,
     session_content_create sess_content = {{0}};
     session_emd_response sess_rep = {{0}};
     int trace_flag = G_FALSE;
+    uint32_t node_loop = 0;
+    uint32_t active_node_num = 0;
+    upc_node_cb *active_node = NULL;
 
     LOG(UPC, RUNNING, "buf_pos %d, buf_max %d", buf_pos, buf_max);
 
@@ -10429,6 +10432,18 @@ void upc_parse_session_establishment_request(uint8_t* buffer,
     node_cb = upc_node_get(node_id->type.d.type, node_id->node_id);
     if (unlikely(NULL == node_cb)) {
         node_cb = upc_get_node_by_sa(sa);
+    }
+    if (unlikely(NULL == node_cb)) {
+        for (node_loop = 0; node_loop < upc_node_get_max_num(); node_loop++) {
+            active_node = upc_node_get_of_index(node_loop);
+            if (NULL != active_node) {
+                active_node_num++;
+                node_cb = active_node;
+            }
+        }
+        if (active_node_num != 1) {
+            node_cb = NULL;
+        }
     }
     if (unlikely(NULL == node_cb)) {
         LOG(UPC, ERR, "get node cb failed.");
