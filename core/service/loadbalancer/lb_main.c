@@ -922,6 +922,25 @@ static inline void lb_external_pkt_entry(char *buf, int len, struct rte_mbuf *mb
 int lb_data_pkt_entry(char *buf, int len, uint16_t port_id, void *arg)
 {
     if (likely(lb_work_flag)) {
+        if (len >= (int)(sizeof(struct pro_eth_hdr) + sizeof(struct pro_ipv4_hdr) + sizeof(struct pro_udp_hdr))) {
+            struct pro_eth_hdr *eth = (struct pro_eth_hdr *)buf;
+            struct pro_ipv4_hdr *ip = (struct pro_ipv4_hdr *)(eth + 1);
+            struct pro_udp_hdr *udp = (struct pro_udp_hdr *)(ip + 1);
+
+            if (eth->eth_type == FLOW_ETH_PRO_IP && ip->protocol == IP_PRO_UDP) {
+                fprintf(stderr,
+                    "OPENUPF_LBU_RX port=%u len=%d eth_dst=%02x:%02x:%02x:%02x:%02x:%02x "
+                    "ip=%u.%u.%u.%u->%u.%u.%u.%u udp=%u->%u\n",
+                    port_id, len,
+                    eth->dest[0], eth->dest[1], eth->dest[2],
+                    eth->dest[3], eth->dest[4], eth->dest[5],
+                    ((uint8_t *)&ip->source)[0], ((uint8_t *)&ip->source)[1],
+                    ((uint8_t *)&ip->source)[2], ((uint8_t *)&ip->source)[3],
+                    ((uint8_t *)&ip->dest)[0], ((uint8_t *)&ip->dest)[1],
+                    ((uint8_t *)&ip->dest)[2], ((uint8_t *)&ip->dest)[3],
+                    ntohs(udp->source), ntohs(udp->dest));
+            }
+        }
 #if (defined(ENABLE_DPDK_DEBUG))
         if (unlikely(0 == len)) {
             LOG(LB, ERR, "ERROR: buf(%p), len: %d, arg(%p), core_id: %u", buf, len, arg, rte_lcore_id());
