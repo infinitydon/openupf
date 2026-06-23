@@ -1013,6 +1013,12 @@ static int sdf_filter_process(struct filter_key *key, uint8_t *field_offset,
                 fd->sip.sipv4, fd->smask.sipv4_mask, fd->dip.dipv4,
                 fd->dmask.dipv4_mask,fd->sp_min, fd->sp_max, fd->dp_min,
                 fd->dp_max, fd->protocol, fd->no_sp, fd->no_dp);
+            fprintf(stderr,
+                "OPENUPF_SDF_V4 packet_remote=0x%08x packet_ue=0x%08x sp=%u dp=%u proto=%u key_sip=0x%08x/0x%08x key_dip=0x%08x/0x%08x key_sp=%u-%u key_dp=%u-%u key_proto=%u no_sp=%u no_dp=%u\n",
+                remote_ip, ue_ip, src_port, dst_port, ip_hdr->protocol,
+                fd->sip.sipv4, fd->smask.sipv4_mask, fd->dip.dipv4,
+                fd->dmask.dipv4_mask, fd->sp_min, fd->sp_max,
+                fd->dp_min, fd->dp_max, fd->protocol, fd->no_sp, fd->no_dp);
 
             if (fd->protocol && ip_hdr->protocol != fd->protocol) {
                 return -1;
@@ -1438,6 +1444,10 @@ static int filter_process(struct filter_key *key, uint8_t *field_offset,
     *url_depth = -1; /* Default set -1 */
 
     LOG(SESSION, RUNNING, "filter_type:%d.", pdi_content->filter_type);
+    fprintf(stderr,
+        "OPENUPF_FILTER si=%u filter_type=%u qfi_number=%u app=%u\n",
+        pdi_content->si, pdi_content->filter_type, pdi_content->qfi_number,
+        pdi_content->application_id_present);
 
     /* Match QFI */
     if (likely(FLOW_MASK_FIELD_ISSET(field_offset, FLOW_FIELD_GTP_T_PDU))) {
