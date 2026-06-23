@@ -1840,6 +1840,10 @@ static int pdr_map_insert(struct pdr_table *pdr_tbl)
                 }
                 LOG(SESSION, RUNNING, "add pdr map success, teid: %u, ipaddr: 0x%08x.",
                     key.teid, key.ip_addr.ipv4);
+                fprintf(stderr,
+                    "OPENUPF_PDR_FTEID_INSERT pdr=%u teid=%u ipv4=0x%08x si=%u precedence=%u local_fteid_num=%u\n",
+                    pdr_tbl->pdr.pdr_id, key.teid, key.ip_addr.ipv4,
+                    pdi->si, precedence, pdi->local_fteid_num);
             }
 
             /* ipv6 */
@@ -2564,10 +2568,18 @@ static struct pdr_table *pdr_match_fteid(struct pdr_local_fteid *fteid_queue, st
     struct pdr_table *ret_pdr = NULL;
     struct pdr_local_fteid *cur;
 
-    ros_rwlock_read_lock(&pdr_head->teid_v6_lock);/* lock */
+    if (FLOW_MASK_FIELD_ISSET(key->field_offset, FLOW_FIELD_L1_IPV4)) {
+        ros_rwlock_read_lock(&pdr_head->teid_v4_lock);/* lock */
+    } else {
+        ros_rwlock_read_lock(&pdr_head->teid_v6_lock);/* lock */
+    }
     if (0 == filter_process(key, &(key->field_offset[FLOW_FIELD_L2_ETH]),
             &fteid_queue->pdr_tbl->pdr.pdi_content, &cur_url_depth)) {
         ret_pdr = fteid_queue->pdr_tbl;
+        fprintf(stderr,
+            "OPENUPF_PDR_FTEID_MATCH pdr=%u si=%u precedence=%u\n",
+            ret_pdr->pdr.pdr_id, ret_pdr->pdr.pdi_content.si,
+            ret_pdr->pdr.precedence);
 
         LOG(SESSION, DEBUG, "pdr map lookup success, pdr_id %u.",
             fteid_queue->pdr_tbl->pdr.pdr_id);
@@ -2675,7 +2687,11 @@ static struct pdr_table *pdr_match_fteid(struct pdr_local_fteid *fteid_queue, st
             }
         }
     }
-    ros_rwlock_read_unlock(&pdr_head->teid_v6_lock); /* unlock */
+    if (FLOW_MASK_FIELD_ISSET(key->field_offset, FLOW_FIELD_L1_IPV4)) {
+        ros_rwlock_read_unlock(&pdr_head->teid_v4_lock);/* unlock */
+    } else {
+        ros_rwlock_read_unlock(&pdr_head->teid_v6_lock);/* unlock */
+    }
 
     /* Match white list */
     if (ret_pdr && -1 == white_list_filter_process(ret_pdr, FlowGetL2Ipv4Header(key))) {
@@ -2846,12 +2862,18 @@ struct pdr_table *pdr_map_lookup(struct filter_key *key)
 
             rb_key.ip_addr.ipv4 = htonl(ip_hdr->dest);
             rb_key.teid         = htonl(gtp_hdr->teid);
+            fprintf(stderr,
+                "OPENUPF_PDR_FTEID_LOOKUP teid=%u ipv4=0x%08x raw_teid=0x%08x raw_dst=0x%08x\n",
+                rb_key.teid, rb_key.ip_addr.ipv4, gtp_hdr->teid, ip_hdr->dest);
 
             ros_rwlock_read_lock(&pdr_head->teid_v4_lock);/* lock */
             queue_node = rbtree_search(&pdr_head->fteid_v4_root,
                 &rb_key, pdr_fteid_v4_compare);
             ros_rwlock_read_unlock(&pdr_head->teid_v4_lock);/* unlock */
             if (NULL == queue_node) {
+                fprintf(stderr,
+                    "OPENUPF_PDR_FTEID_MISS teid=%u ipv4=0x%08x\n",
+                    rb_key.teid, rb_key.ip_addr.ipv4);
                 LOG(SESSION, ERR,
                     "search pdr failed, teid 0x%x, ipv4: 0x%08x.",
                     rb_key.teid, rb_key.ip_addr.ipv4);
