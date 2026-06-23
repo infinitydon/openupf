@@ -2726,6 +2726,10 @@ static PFCP_CAUSE_TYPE upc_parse_OHC(session_outer_header_create *ohc,
             len_cnt, obj_len);
     }
 
+    fprintf(stderr,
+        "OPENUPF_OHC_PARSE len=%u type=0x%04x teid=%u ipv4=0x%08x port=%u cause=%u\n",
+        obj_len, ohc->type.value, ohc->teid, ohc->ipv4, ohc->port, res_cause);
+
     return res_cause;
 }
 
@@ -9167,6 +9171,11 @@ static int upc_assign_teid(uint32_t node_index,
                 pdi->local_fteid.teid);
             return -1;
         }
+
+        fprintf(stderr,
+            "OPENUPF_LOCAL_FTEID_ALLOC si=%u teid=%u ipv4=0x%08x flag=0x%02x\n",
+            pdi->si, pdi->local_fteid.teid, pdi->local_fteid.ipv4_addr,
+            pdi->local_fteid.f_teid_flag.value);
     }
 
     return 0;
@@ -9718,6 +9727,11 @@ void upc_est_fill_created_pdr(session_content_create *sess, session_emd_response
                 ros_memcpy(&crd_pdr->local_fteid, &pdr->pdi_content.local_fteid, sizeof(session_f_teid));
                 crd_pdr->local_fteid.f_teid_flag.d.ch = 0;
                 crd_pdr->local_fteid.f_teid_flag.d.chid = 0;
+                fprintf(stderr,
+                    "OPENUPF_CREATED_PDR pdr=%u teid=%u ipv4=0x%08x flag=0x%02x\n",
+                    crd_pdr->pdr_id, crd_pdr->local_fteid.teid,
+                    crd_pdr->local_fteid.ipv4_addr,
+                    crd_pdr->local_fteid.f_teid_flag.value);
                 fill_flag = 1;
             }
 
@@ -9774,6 +9788,11 @@ void upc_mdf_fill_created_pdr(session_content_modify *sess, session_emd_response
                 ros_memcpy(&crd_pdr->local_fteid, &pdr->pdi_content.local_fteid, sizeof(session_f_teid));
                 crd_pdr->local_fteid.f_teid_flag.d.ch = 0;
                 crd_pdr->local_fteid.f_teid_flag.d.chid = 0;
+                fprintf(stderr,
+                    "OPENUPF_CREATED_PDR pdr=%u teid=%u ipv4=0x%08x flag=0x%02x\n",
+                    crd_pdr->pdr_id, crd_pdr->local_fteid.teid,
+                    crd_pdr->local_fteid.ipv4_addr,
+                    crd_pdr->local_fteid.f_teid_flag.value);
                 fill_flag = 1;
             }
 
