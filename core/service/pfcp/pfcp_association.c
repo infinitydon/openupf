@@ -924,6 +924,8 @@ void pfcp_parse_association_setup_request(uint8_t* buffer,
             case UPF_CP_FUNCTION_FEATURES:
                 if (sizeof(uint16_t) == obj_len) {
                     assoc_setup.cp_features.value = tlv_decode_uint16_t(buffer, &buf_pos);
+                } else if (sizeof(uint8_t) == obj_len) {
+                    assoc_setup.cp_features.value = tlv_decode_uint8_t(buffer, &buf_pos);
                 } else {
                     LOG(UPC, ERR, "obj_len: %d abnormal, Should be %lu.",
                         obj_len, sizeof(uint16_t));
@@ -2094,4 +2096,3 @@ void pfcp_build_association_release_response(uint8_t* resp_buffer,
     /* Filling msg header length */
     pfcp_client_set_header_length(resp_buffer, msg_hdr_pos, *buf_pos);
 }
-
