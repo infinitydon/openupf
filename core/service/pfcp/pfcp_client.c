@@ -55,6 +55,16 @@ int pfcp_client_entry(char *buf, int len, void *arg)
         buf_pos++;
 
         LOG(UPC, RUNNING, "msg type %d", msg_header->msg_type);
+        if (AF_INET == ((struct sockaddr *)arg)->sa_family) {
+            struct sockaddr_in *sa_v4 = (struct sockaddr_in *)arg;
+            uint8_t *addr = (uint8_t *)&sa_v4->sin_addr.s_addr;
+
+            fprintf(stderr,
+                "OPENUPF_PFCP_IN type=%u seq=%u seid=0x%lx peer=%u.%u.%u.%u:%u len=%d msg_len=%u\n",
+                msg_header->msg_type, pkt_seq, pkt_seid,
+                addr[0], addr[1], addr[2], addr[3], ntohs(sa_v4->sin_port),
+                len, msg_len);
+        }
 
         if (likely(msg_header->version == PFCP_MAJOR_VERSION)) {
             /* Parse msg by type */

@@ -868,6 +868,15 @@ void pfcp_parse_association_setup_request(uint8_t* buffer,
     session_association_setup assoc_setup = {{0}};
 
     LOG(UPC, RUNNING, "buf_pos %d, buf_max %d", buf_pos, buf_max);
+    if (AF_INET == sa->sa_family) {
+        struct sockaddr_in *sa_v4 = (struct sockaddr_in *)sa;
+        uint8_t *addr = (uint8_t *)&sa_v4->sin_addr.s_addr;
+
+        fprintf(stderr,
+            "OPENUPF_ASSOC_PARSE_START seq=%u peer=%u.%u.%u.%u:%u buf_pos=%u buf_max=%d\n",
+            pkt_seq, addr[0], addr[1], addr[2], addr[3], ntohs(sa_v4->sin_port),
+            buf_pos, buf_max);
+    }
 
     /* Parse packet */
     last_pos = buf_pos;
@@ -1028,6 +1037,9 @@ void pfcp_parse_association_setup_request(uint8_t* buffer,
     node_cb = upc_node_add(UPC_NODE_INVALID_INDEX, assoc_setup.node_id.type.d.type,
         assoc_setup.node_id.node_id, sa);
     if (NULL == node_cb) {
+        fprintf(stderr,
+            "OPENUPF_ASSOC_NODE_ADD_FAILED seq=%u node_id_type=%u cause=%u\n",
+            pkt_seq, assoc_setup.node_id.type.d.type, res_cause);
         res_cause = SESS_SERVICE_NOT_SUPPORTED;
         goto fast_response;
     }
@@ -1074,6 +1086,15 @@ void pfcp_parse_association_setup_request(uint8_t* buffer,
     }
 
 fast_response:
+    if (AF_INET == sa->sa_family) {
+        struct sockaddr_in *sa_v4 = (struct sockaddr_in *)sa;
+        uint8_t *addr = (uint8_t *)&sa_v4->sin_addr.s_addr;
+
+        fprintf(stderr,
+            "OPENUPF_ASSOC_RESPONSE seq=%u cause=%u node=%p peer=%u.%u.%u.%u:%u sync=%u\n",
+            pkt_seq, res_cause, node_cb, addr[0], addr[1], addr[2], addr[3],
+            ntohs(sa_v4->sin_port), sync_blk_exist);
+    }
     upc_fill_ip_udp_hdr(resp_buffer, &resp_pos, sa);
 
     pfcp_build_association_setup_response(resp_buffer, &resp_pos, res_cause, pkt_seq,
@@ -2073,5 +2094,4 @@ void pfcp_build_association_release_response(uint8_t* resp_buffer,
     /* Filling msg header length */
     pfcp_client_set_header_length(resp_buffer, msg_hdr_pos, *buf_pos);
 }
-
 

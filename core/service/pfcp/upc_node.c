@@ -281,10 +281,26 @@ upc_node_cb *upc_node_add(uint8_t node_index, uint8_t node_type, uint8_t *nodeid
     upc_node_header *node_mgmt = upc_node_mng_get();
     upc_node_cb *node;
     uint32_t index, key = 0;
+    char peer_text[80] = "none";
+
+    if ((NULL != sa) && (AF_INET == sa->sa_family)) {
+        struct sockaddr_in *sa_v4 = (struct sockaddr_in *)sa;
+        uint8_t *addr = (uint8_t *)&sa_v4->sin_addr.s_addr;
+
+        snprintf(peer_text, sizeof(peer_text), "%u.%u.%u.%u:%u",
+            addr[0], addr[1], addr[2], addr[3], ntohs(sa_v4->sin_port));
+    }
+
+    fprintf(stderr,
+        "OPENUPF_NODE_ADD_START requested_index=%u type=%u node_id=%u.%u.%u.%u peer=%s\n",
+        node_index, node_type, nodeid[0], nodeid[1], nodeid[2], nodeid[3], peer_text);
 
     /* If can't find matched node */
     node = upc_node_get(node_type, nodeid);
     if (NULL != node) {
+        fprintf(stderr,
+            "OPENUPF_NODE_ADD_REPLACE existing_index=%u type=%u node_id=%u.%u.%u.%u peer=%s\n",
+            node->index, node_type, nodeid[0], nodeid[1], nodeid[2], nodeid[3], peer_text);
         /* By the remark of association request on manual */
         /* If receive request from same smf, need release old one */
         /* regardless timestamp */
@@ -297,6 +313,9 @@ upc_node_cb *upc_node_add(uint8_t node_index, uint8_t node_type, uint8_t *nodeid
         case UPC_NODE_INVALID_INDEX:
             if (G_FAILURE == Res_Alloc(node_mgmt->res_no, &key, &index, EN_RES_ALLOC_MODE_OC)) {
                 LOG(UPC, ERR, "Node alloc target %d resource failed.", node_index);
+                fprintf(stderr,
+                    "OPENUPF_NODE_ADD_ALLOC_FAILED requested_index=%u type=%u peer=%s\n",
+                    node_index, node_type, peer_text);
                 return NULL;
             }
             break;
@@ -306,6 +325,9 @@ upc_node_cb *upc_node_add(uint8_t node_index, uint8_t node_type, uint8_t *nodeid
             index = node_index;
             if (G_FAILURE == Res_AllocTarget(node_mgmt->res_no, key, node_index)) {
                 LOG(UPC, ERR, "Node alloc target %d resource failed.", node_index);
+                fprintf(stderr,
+                    "OPENUPF_NODE_ADD_ALLOC_FAILED requested_index=%u type=%u peer=%s\n",
+                    node_index, node_type, peer_text);
                 return NULL;
             }
             break;
@@ -344,6 +366,9 @@ upc_node_cb *upc_node_add(uint8_t node_index, uint8_t node_type, uint8_t *nodeid
 
         default:
             Res_Free(node_mgmt->res_no, key, index);
+            fprintf(stderr,
+                "OPENUPF_NODE_ADD_BAD_TYPE index=%u type=%u peer=%s\n",
+                index, node_type, peer_text);
             return NULL;
     }
     if (sa) {
@@ -356,11 +381,22 @@ upc_node_cb *upc_node_add(uint8_t node_index, uint8_t node_type, uint8_t *nodeid
         ros_timer_start(node->hb_timer);
     }
 
+    fprintf(stderr,
+        "OPENUPF_NODE_ADD_DONE index=%u type=%u status=%u peer=%s\n",
+        node->index, node_type, node->status, peer_text);
+
     return node;
 }
 
 int upc_node_del(upc_node_cb *node)
 {
+    uint8_t type = node->peer_id.type.d.type;
+    fprintf(stderr,
+        "OPENUPF_NODE_DEL_START index=%u type=%u status=%u node_id=%u.%u.%u.%u\n",
+        node->index, type, node->status,
+        node->peer_id.node_id[0], node->peer_id.node_id[1],
+        node->peer_id.node_id[2], node->peer_id.node_id[3]);
+
     if (HA_STATUS_ACTIVE == upc_get_work_status()) {
         ros_timer_stop(node->hb_timer);
     }
@@ -376,6 +412,10 @@ int upc_node_del(upc_node_cb *node)
     node->peer_id.type.d.type = UPF_NODE_TYPE_BUTT;
     memset(node->peer_id.node_id, 0, PFCP_MAX_NODE_ID_LEN);
     dl_list_init(&node->seid_list);
+
+    fprintf(stderr,
+        "OPENUPF_NODE_DEL_DONE index=%u old_type=%u\n",
+        node->index, type);
 
     return 0;
 }
@@ -947,4 +987,3 @@ help:
     cli_print(cli, "e.g     release_node 10.8.126.32");
     return 0;
 }
-
