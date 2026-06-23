@@ -243,7 +243,13 @@ uint32_t fp_msg_entry_mod(comm_msg_ie_t *ie)
     }
 
     input_cfg = (comm_msg_fast_cfg *)&(entry_ie->data);
-
+    fprintf(stderr,
+        "OPENUPF_FAST_MOD_RECV index=%u table=%u inst=%u far=%u temp=%u pdr_si=%u dst_mac=%02x:%02x:%02x:%02x:%02x:%02x\n",
+        index, type, ntohl(input_cfg->inst_index), ntohl(input_cfg->far_index),
+        input_cfg->temp_flag, input_cfg->pdr_si,
+        input_cfg->dst_mac[0], input_cfg->dst_mac[1],
+        input_cfg->dst_mac[2], input_cfg->dst_mac[3],
+        input_cfg->dst_mac[4], input_cfg->dst_mac[5]);
     /* Check if or not entry num changed */
     entry = fp_fast_entry_get(head, index);
     entry_cfg = (comm_msg_fast_cfg *)&(entry->cfg_data);
@@ -253,7 +259,10 @@ uint32_t fp_msg_entry_mod(comm_msg_ie_t *ie)
     fp_msg_fast_copy(entry_cfg, input_cfg);
     new_inst_index = entry_cfg->inst_index;
     new_far_index = entry_cfg->far_index;
-
+    fprintf(stderr,
+        "OPENUPF_FAST_MOD_APPLY index=%u old_inst=%u new_inst=%u far=%u temp=%u\n",
+        index, old_inst_index, new_inst_index, new_far_index,
+        entry_cfg->temp_flag);
     /* Get shadow */
     shadow = fp_fast_shadow_get(head, index);
 

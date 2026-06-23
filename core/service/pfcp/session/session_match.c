@@ -220,6 +220,20 @@ void session_match(struct filter_key *key, uint32_t fast_tid, uint8_t fast_type,
         fast_cfg->dst_mac[3], fast_cfg->dst_mac[4], fast_cfg->dst_mac[5]);
 
 fast_handle:
+    fprintf(stderr,
+        "OPENUPF_FAST_MOD_SEND cmd=0x%04x fast_id=%u table=%u inst=%u far=%u temp=%u pdr_si=%u dst_mac=%02x:%02x:%02x:%02x:%02x:%02x no_match=%u\n",
+        ntohs(ie->cmd), fast_tid, fast_ie->table,
+        ntohl(((comm_msg_fast_cfg *)ie->data)->inst_index),
+        ntohl(((comm_msg_fast_cfg *)ie->data)->far_index),
+        ((comm_msg_fast_cfg *)ie->data)->temp_flag,
+        ((comm_msg_fast_cfg *)ie->data)->pdr_si,
+        ((comm_msg_fast_cfg *)ie->data)->dst_mac[0],
+        ((comm_msg_fast_cfg *)ie->data)->dst_mac[1],
+        ((comm_msg_fast_cfg *)ie->data)->dst_mac[2],
+        ((comm_msg_fast_cfg *)ie->data)->dst_mac[3],
+        ((comm_msg_fast_cfg *)ie->data)->dst_mac[4],
+        ((comm_msg_fast_cfg *)ie->data)->dst_mac[5],
+        no_match_pdr_or_sess);
     buf_len = COMM_MSG_IE_LEN_COMMON + COMM_MSG_IE_LEN_FAST;
     ie->len = htons(buf_len);
     ie->index  = htonl(ie->index);
