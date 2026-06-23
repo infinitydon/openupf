@@ -311,6 +311,18 @@ static inline void lb_fwd_to_external_network(void *m)
     lb_packet_stat_increase(EN_LB_SENT_EXT_STAT);
 }
 
+static inline void lb_fwd_to_external_network_flush(void *m)
+{
+    uint16_t port_id = lb_port_to_index(EN_LB_PORT_EXT);
+
+    LOG(LB, PERIOD, "Packet forward to external network with flush.");
+    lb_outer_add_vlan(m, EN_LB_PORT_EXT);
+
+    dpdk_send_packet(m, port_id, __FUNCTION__, __LINE__);
+    dpdk_flush_tx_port(port_id);
+    lb_packet_stat_increase(EN_LB_SENT_EXT_STAT);
+}
+
 void lb_fwd_to_external_network_public(void *m)
 {
     lb_fwd_to_external_network(m);
@@ -842,7 +854,7 @@ static inline void lb_external_pkt_entry(char *buf, int len, struct rte_mbuf *mb
                 default:
                     /* Maybe ARP */
                     if (0 == lb_arp_pkt_proc(&match_key, mbuf)) {
-                        lb_fwd_to_external_network(mbuf);
+                        lb_fwd_to_external_network_flush(mbuf);
                     } else {
                         /* Maybe Ethernet 802.3 or Non-IP packet */
                         lb_free_pkt(mbuf);
@@ -1456,4 +1468,3 @@ int lb_show_packet_stat(struct cli_def *cli,int argc, char **argv)
 
     return 0;
 }
-
