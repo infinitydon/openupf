@@ -10428,6 +10428,9 @@ void upc_parse_session_establishment_request(uint8_t* buffer,
 
     node_cb = upc_node_get(node_id->type.d.type, node_id->node_id);
     if (unlikely(NULL == node_cb)) {
+        node_cb = upc_get_node_by_sa(sa);
+    }
+    if (unlikely(NULL == node_cb)) {
         LOG(UPC, ERR, "get node cb failed.");
 
         res_cause = SESS_NO_ESTABLISHED_PFCP_ASSOCIATION;
