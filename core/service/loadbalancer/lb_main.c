@@ -491,6 +491,7 @@ static inline int lb_arp_pkt_proc(struct filter_key *match_key, struct rte_mbuf 
         } else if (ntohs(arp_hdr->ar_op) == 2) {
             /* Local establishment/update of ARP cache table */
             lb_neighbor_recv_arp(*(uint32_t *)arp_hdr->ar_sip, arp_hdr->ar_sha, EN_LB_PORT_EXT);
+            return -1;
         }
 
         LOG(LB, RUNNING, "Recv ARP packet, sender: 0x%08x, target: 0x%08x.\r\n",
