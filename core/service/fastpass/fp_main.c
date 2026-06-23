@@ -191,6 +191,26 @@ int fp_phy_pkt_entry(char *buf, int len, uint16_t port_id, void *arg)
     struct packet_desc  desc = {.buf = buf, .len = len, .offset = 0};
     fp_packet_info      pkt_info = {.buf = buf, .len = len, .arg = arg, .port_id = port_id};
 
+    if (len >= (int)(sizeof(struct pro_eth_hdr) + sizeof(struct pro_ipv4_hdr) + sizeof(struct pro_udp_hdr))) {
+        struct pro_eth_hdr *eth = (struct pro_eth_hdr *)buf;
+        struct pro_ipv4_hdr *ip = (struct pro_ipv4_hdr *)(eth + 1);
+        struct pro_udp_hdr *udp = (struct pro_udp_hdr *)(ip + 1);
+
+        if (eth->eth_type == FLOW_ETH_PRO_IP && ip->protocol == IP_PRO_UDP) {
+            fprintf(stderr,
+                "OPENUPF_FPU_RX port=%u len=%d eth_dst=%02x:%02x:%02x:%02x:%02x:%02x "
+                "ip=%u.%u.%u.%u->%u.%u.%u.%u udp=%u->%u\n",
+                port_id, len,
+                eth->dest[0], eth->dest[1], eth->dest[2],
+                eth->dest[3], eth->dest[4], eth->dest[5],
+                ((uint8_t *)&ip->source)[0], ((uint8_t *)&ip->source)[1],
+                ((uint8_t *)&ip->source)[2], ((uint8_t *)&ip->source)[3],
+                ((uint8_t *)&ip->dest)[0], ((uint8_t *)&ip->dest)[1],
+                ((uint8_t *)&ip->dest)[2], ((uint8_t *)&ip->dest)[3],
+                ntohs(udp->source), ntohs(udp->dest));
+        }
+    }
+
     /**
      *  Which port receives the message and forwards it back to which port
      */
@@ -1516,5 +1536,4 @@ help:
 
     return -1;
 }
-
 
