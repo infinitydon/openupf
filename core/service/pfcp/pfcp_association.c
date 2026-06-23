@@ -557,12 +557,64 @@ static PFCP_CAUSE_TYPE pfcp_parse_clock_drift_ctrl_info(session_clock_drift_cont
 static void pfcp_encode_up_features(uint8_t* resp_buffer, uint16_t *buf_pos)
 {
     session_up_features        up_features;
+    uint64_t                   feature_value;
 
     /* Encode up features */
     tlv_encode_type(resp_buffer, buf_pos, UPF_UP_FUNCTION_FEATURES);
     tlv_encode_length(resp_buffer, buf_pos, 6);
     up_features.value = upc_get_up_features();
-    tlv_encode_int_6b(resp_buffer, buf_pos, up_features.value);
+    feature_value =
+        ((uint64_t)(
+            (up_features.d.BUCP ? 0x01 : 0) |
+            (up_features.d.DDND ? 0x02 : 0) |
+            (up_features.d.DLBD ? 0x04 : 0) |
+            (up_features.d.TRST ? 0x08 : 0) |
+            (up_features.d.FTUP ? 0x10 : 0) |
+            (up_features.d.PFDM ? 0x20 : 0) |
+            (up_features.d.HEEU ? 0x40 : 0) |
+            (up_features.d.TREU ? 0x80 : 0)) << 40) |
+        ((uint64_t)(
+            (up_features.d.EMPU ? 0x01 : 0) |
+            (up_features.d.PDIU ? 0x02 : 0) |
+            (up_features.d.UDBC ? 0x04 : 0) |
+            (up_features.d.QUOAC ? 0x08 : 0) |
+            (up_features.d.TRACE ? 0x10 : 0) |
+            (up_features.d.FRRT ? 0x20 : 0) |
+            (up_features.d.PFDE ? 0x40 : 0) |
+            (up_features.d.EPFAR ? 0x80 : 0)) << 32) |
+        ((uint64_t)(
+            (up_features.d.DPDRA ? 0x01 : 0) |
+            (up_features.d.ADPDP ? 0x02 : 0) |
+            (up_features.d.UEIP ? 0x04 : 0) |
+            (up_features.d.SSET ? 0x08 : 0) |
+            (up_features.d.MNOP ? 0x10 : 0) |
+            (up_features.d.MTE ? 0x20 : 0) |
+            (up_features.d.BUNDL ? 0x40 : 0) |
+            (up_features.d.GCOM ? 0x80 : 0)) << 24) |
+        ((uint64_t)(
+            (up_features.d.MPAS ? 0x01 : 0) |
+            (up_features.d.RTTL ? 0x02 : 0) |
+            (up_features.d.VTIME1 ? 0x04 : 0) |
+            (up_features.d.NORP ? 0x08 : 0) |
+            (up_features.d.IPTV ? 0x10 : 0) |
+            (up_features.d.IP6PL ? 0x20 : 0) |
+            (up_features.d.TSCU ? 0x40 : 0) |
+            (up_features.d.MPTCP ? 0x80 : 0)) << 16) |
+        ((uint64_t)(
+            (up_features.d.ATSSS_LL ? 0x01 : 0) |
+            (up_features.d.QFQM ? 0x02 : 0) |
+            (up_features.d.GPQM ? 0x04 : 0) |
+            (up_features.d.MT_EDT ? 0x08 : 0) |
+            (up_features.d.CIOT ? 0x10 : 0) |
+            (up_features.d.ETHAR ? 0x20 : 0) |
+            (up_features.d.DDDS ? 0x40 : 0) |
+            (up_features.d.RDS ? 0x80 : 0)) << 8) |
+        (uint64_t)(
+            (up_features.d.RTTWP ? 0x01 : 0) |
+            (up_features.d.QUASF ? 0x02 : 0) |
+            (up_features.d.NSPOC ? 0x04 : 0));
+
+    tlv_encode_int_6b(resp_buffer, buf_pos, feature_value);
 }
 
 static void pfcp_encode_time_stamp(uint8_t* resp_buffer, uint16_t *buf_pos)
