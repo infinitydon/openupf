@@ -1248,7 +1248,10 @@ static inline int pdr_match_qfi(struct filter_key *key, uint8_t *qfi_array, uint
     gtpExt = FlowGetGtpuExt(key);
     if (NULL == gtpExt) {
         LOG(SESSION, ERR, "get gtp ext head failed.");
-        return -1;
+        fprintf(stderr,
+            "OPENUPF_QFI_SKIP reason=no_gtp_ext qfi_number=%u\n",
+            qfi_number);
+        return 0;
     }
 
     /*
@@ -1268,7 +1271,10 @@ static inline int pdr_match_qfi(struct filter_key *key, uint8_t *qfi_array, uint
         }
     }
 
-    return -1;
+    fprintf(stderr,
+        "OPENUPF_QFI_SKIP reason=no_pdu_session_container ext0=0x%02x qfi_number=%u\n",
+        gtpExt[0], qfi_number);
+    return 0;
 }
 
 static int white_list_filter_process(struct pdr_table *pdr_tbl, struct pro_ipv4_hdr *ip_hdr)
