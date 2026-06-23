@@ -43,6 +43,8 @@ user_Signaling_trace_t user_sig_trace;
 
 struct service_raw *upc_pfcp_channel;
 
+extern int gahGetPeerMacbyIp(int ipaddr, char *buf, char *localethname);
+
 /* SMU packets status */
 ros_atomic64_t upc_pkt_stat[UPC_PKT_STATUS_BUTT];
 
@@ -257,13 +259,13 @@ void upc_fill_ip_udp_hdr(uint8_t *buf, uint16_t *buf_len, struct sockaddr *sa)
     upc_management_end_config *mb_cfg = upc_mb_config_get_public();
     upc_config_info *upc_conf = upc_get_config();
     uint16_t offset = *buf_len, dest_port;
+    uint8_t peer_mac[ETH_ALEN] = {0};
     struct pro_eth_hdr *eth_hdr;
     struct pro_udp_hdr  *udp_hdr;
 
     /* Filling ethernet header */
     eth_hdr = (struct pro_eth_hdr *)(buf + offset);
     offset += ETH_HLEN;
-    memcpy(eth_hdr->dest, mb_cfg->lb_mac[EN_PORT_N4], ETH_ALEN);
     memcpy(eth_hdr->source, upc_conf->n4_local_mac, ETH_ALEN);
 
     switch (sa->sa_family) {
@@ -322,6 +324,13 @@ void upc_fill_ip_udp_hdr(uint8_t *buf, uint16_t *buf_len, struct sockaddr *sa)
                 ip_hdr->source = htonl(upc_conf->upf_ip_cfg[EN_PORT_N4].ipv4);
                 /* Encode dest ip */
                 ip_hdr->dest = sa_v4->sin_addr.s_addr;
+
+                if (0 == gahGetPeerMacbyIp(sa_v4->sin_addr.s_addr,
+                        (char *)peer_mac, upc_conf->upc2smf_name)) {
+                    memcpy(eth_hdr->dest, peer_mac, ETH_ALEN);
+                } else {
+                    memcpy(eth_hdr->dest, mb_cfg->lb_mac[EN_PORT_N4], ETH_ALEN);
+                }
 
                 dest_port = sa_v4->sin_port;
             }

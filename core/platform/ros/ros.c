@@ -83,6 +83,47 @@ uint8_t ros_get_avail_core_num(void)
     return ros_avail_core_num;
 }
 
+static int ros_read_cpuset_file(char *buf, size_t size)
+{
+    static const char *paths[] = {
+        "/sys/fs/cgroup/cpuset.cpus.effective",
+        "/sys/fs/cgroup/cpuset.cpus",
+        "/sys/fs/cgroup/cpuset/cpuset.cpus",
+    };
+    FILE *fp = NULL;
+    size_t len = 0;
+    uint32_t cnt;
+
+    if (size == 0) {
+        return -1;
+    }
+
+    for (cnt = 0; cnt < sizeof(paths) / sizeof(paths[0]); ++cnt) {
+        fp = fopen(paths[cnt], "r");
+        if (fp == NULL) {
+            continue;
+        }
+
+        if (fgets(buf, size, fp) == NULL) {
+            fclose(fp);
+            continue;
+        }
+        fclose(fp);
+
+        len = strlen(buf);
+        while (len > 0 && (buf[len - 1] == '\n' || buf[len - 1] == '\r')) {
+            buf[--len] = '\0';
+        }
+        if (len == 0) {
+            continue;
+        }
+
+        return 0;
+    }
+
+    return -1;
+}
+
 /* Parse cpuset cpus */
 uint8_t ros_parse_cpuset_cpus(uint8_t cpus[])
 {
@@ -94,8 +135,8 @@ uint8_t ros_parse_cpuset_cpus(uint8_t cpus[])
     char print_str[256];
     uint8_t cnt, str_cnt = 0;
 
-    if (0 > ros_read_from_shell_cmd(result, sizeof(result), "cat /sys/fs/cgroup/cpuset/cpuset.cpus")) {
-        LOG(ROS, ERR, "ros_read_from_shell_cmd fail ");
+    if (0 > ros_read_cpuset_file(result, sizeof(result))) {
+        LOG(ROS, ERR, "Read cpuset cpus fail");
         return ret_cnt;
     }
 

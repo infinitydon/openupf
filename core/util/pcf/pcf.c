@@ -186,7 +186,9 @@ static inline struct pcf_key *pcf_new_key(char *str, int key_len)
 int pcf_conf_free(struct pcf_file *file)
 {
     struct pcf_section *section;
+    struct pcf_section *next_section;
     struct pcf_key     *key;
+    struct pcf_key     *next_key;
 
     if (!file) {
         printf("%s(%d):input param is NULL.\n", __func__, __LINE__);
@@ -197,19 +199,18 @@ int pcf_conf_free(struct pcf_file *file)
     while (section != NULL) {
         key = section->key_head;
         while (key != NULL) {
+            next_key = key->next;
             free(key->pair.key);
             free(key->pair.val);
             free(key);
-            key->pair.key = NULL;
-            key->pair.val = NULL;
-            key = key->next;
+            key = next_key;
         }
         key = NULL;
 
+        next_section = section->next;
         free(section->section);
         free(section);
-        section->section = NULL;
-        section = section->next;
+        section = next_section;
     }
     file->section_head = NULL;
 

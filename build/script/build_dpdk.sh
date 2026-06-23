@@ -14,6 +14,7 @@ DPDK_BUILD_DIR=$UPF_BUILD_PATH/dpdk
 DPDK_INSTALL_DIR=$DPDK_BUILD_DIR/install
 DPDK_INSTALL_LIBS_DIR=$DPDK_INSTALL_DIR/lib
 DPDK_INSTALL_INCLUDE_DIR=$DPDK_INSTALL_DIR/include
+: ${DPDK_MESON_ARGS:=}
 #DPDK_INSTALL_BINS_DIR=$DPDK_INSTALL_DIR/dpdkbin
 #DPDK_INSTALL_DATA_DIR=$DPDK_INSTALL_DIR/dpdkshare
 
@@ -62,7 +63,7 @@ DPDK_BUILD()
     then
         #meson -Dprefix=$DPDK_INSTALL_DIR -Ddefault_library=static -Dlibdir=$DPDK_INSTALL_LIBS_DIR -Dincludedir=$DPDK_INSTALL_INCLUDE_DIR -Dbindir=$DPDK_INSTALL_BINS_DIR -Ddatadir=$DPDK_INSTALL_DATA_DIR $DPDK_BUILD_DIR $DPDK_LIB_DIR
         #meson -Dprefix=$DPDK_INSTALL_DIR -Dlibdir=$DPDK_INSTALL_DIR/lib -Dibverbs_link=static -Dtests=false $DPDK_BUILD_DIR $DPDK_LIB_DIR
-        meson -Dprefix=$DPDK_INSTALL_DIR -Dlibdir=$DPDK_INSTALL_DIR/lib $DPDK_BUILD_DIR $DPDK_LIB_DIR
+        meson -Dprefix=$DPDK_INSTALL_DIR -Dlibdir=$DPDK_INSTALL_DIR/lib $DPDK_MESON_ARGS $DPDK_BUILD_DIR $DPDK_LIB_DIR
         #sed -ri 's@#define RTE_EAL_PMD_PATH.*(pmds.+)"@#define RTE_EAL_PMD_PATH "/opt/upf/lib/dpdk/\1"@g' $DPDK_BUILD_DIR/rte_build_config.h
         ninja -C $DPDK_BUILD_DIR
         ninja install -C $DPDK_BUILD_DIR

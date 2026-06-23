@@ -1,0 +1,12 @@
+.git
+build/dpdk
+build/fpu
+build/lbu
+build/smu
+install/bin
+install/lib
+install/include
+libs/dpdk
+libs/orcania
+libs/ulfius
+*.log

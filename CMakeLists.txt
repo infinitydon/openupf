@@ -20,6 +20,8 @@ set(PROJECT_VERSION "${PROJECT_VERSION_MAJOR}.${PROJECT_VERSION_MINOR}.${PROJECT
 # Set project name
 project(upf VERSION ${PROJECT_VERSION} LANGUAGES C)
 
+option(OPENUPF_WERROR "Treat compiler warnings as errors" OFF)
+
 # Set global absolute path
 SET(UPF_ROOT_PATH ${CMAKE_CURRENT_SOURCE_DIR})
 SET(UPF_BUILD_PATH ${UPF_ROOT_PATH}/build)
@@ -69,15 +71,19 @@ if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
 endif()
 message(STATUS "CMAKE_INSTALL_PREFIX is ${CMAKE_INSTALL_PREFIX}")
 
-add_definitions(-fPIC -g -O2 -pthread -march=native 
+add_definitions(-fPIC -g -O2 -pthread -march=native -fgnu89-inline
     -Wmaybe-uninitialized -Wimplicit 
-    -Werror -Wall -Waddress -Wchar-subscripts 
+    -Wall -Waddress -Wchar-subscripts 
     -Wenum-compare -Wimplicit-int -Wimplicit-function-declaration 
     -Wcomment -Wformat -Wmain -Wmissing-braces -Wnonnull
     -Wparentheses -Wpointer-sign -Wreturn-type -Wsequence-point 
     -Wno-strict-aliasing -Wstrict-overflow=1 -Wswitch -Wtrigraphs 
     -Wuninitialized -Wunknown-pragmas -Wunused-function -Wunused-label 
     -Wunused-value -Wunused-variable -Wvolatile-register-var)
+
+if(OPENUPF_WERROR)
+    add_definitions(-Werror)
+endif()
 
 macro(INCLU_SUBDIR curdir)
     file(GLOB children RELATIVE ${curdir} ${curdir}/*)
