@@ -10438,11 +10438,10 @@ void upc_parse_session_establishment_request(uint8_t* buffer,
             active_node = upc_node_get_of_index(node_loop);
             if (NULL != active_node) {
                 active_node_num++;
-                node_cb = active_node;
+                if (NULL == node_cb) {
+                    node_cb = active_node;
+                }
             }
-        }
-        if (active_node_num != 1) {
-            node_cb = NULL;
         }
     }
     if (unlikely(NULL == node_cb)) {
