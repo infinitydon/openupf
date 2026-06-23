@@ -406,10 +406,16 @@ static inline int lb_arp_pkt_proc(struct filter_key *match_key, struct rte_mbuf 
 
         if (arp_dstip == lb_net_local_ip[EN_PORT_N3]) {
             /* N3 ARP */
+            fprintf(stderr, "OPENUPF_LBU_ARP target=%u.%u.%u.%u match=N3\n",
+                ((uint8_t *)&arp_dstip)[0], ((uint8_t *)&arp_dstip)[1],
+                ((uint8_t *)&arp_dstip)[2], ((uint8_t *)&arp_dstip)[3]);
             LOG(LB, RUNNING, "N3 ARP packet.");
         }
         else if (arp_dstip == lb_net_local_ip[EN_PORT_N6]) {
             /* N6 ARP */
+            fprintf(stderr, "OPENUPF_LBU_ARP target=%u.%u.%u.%u match=N6\n",
+                ((uint8_t *)&arp_dstip)[0], ((uint8_t *)&arp_dstip)[1],
+                ((uint8_t *)&arp_dstip)[2], ((uint8_t *)&arp_dstip)[3]);
             LOG(LB, RUNNING, "N6 ARP packet");
         }
         else if (arp_dstip == lb_net_local_ip[EN_PORT_N9]) {
@@ -421,6 +427,18 @@ static inline int lb_arp_pkt_proc(struct filter_key *match_key, struct rte_mbuf 
             LOG(LB, RUNNING, "N4 ARP packet");
         }
         else {
+            fprintf(stderr,
+                "OPENUPF_LBU_ARP target=%u.%u.%u.%u match=UNKNOWN n3=%u.%u.%u.%u n6=%u.%u.%u.%u\n",
+                ((uint8_t *)&arp_dstip)[0], ((uint8_t *)&arp_dstip)[1],
+                ((uint8_t *)&arp_dstip)[2], ((uint8_t *)&arp_dstip)[3],
+                ((uint8_t *)&lb_net_local_ip[EN_PORT_N3])[0],
+                ((uint8_t *)&lb_net_local_ip[EN_PORT_N3])[1],
+                ((uint8_t *)&lb_net_local_ip[EN_PORT_N3])[2],
+                ((uint8_t *)&lb_net_local_ip[EN_PORT_N3])[3],
+                ((uint8_t *)&lb_net_local_ip[EN_PORT_N6])[0],
+                ((uint8_t *)&lb_net_local_ip[EN_PORT_N6])[1],
+                ((uint8_t *)&lb_net_local_ip[EN_PORT_N6])[2],
+                ((uint8_t *)&lb_net_local_ip[EN_PORT_N6])[3]);
             LOG(LB, PERIOD,  "Unknown ARP packet, sender: 0x%08x, target: 0x%08x.\r\n",
                 ntohl(*(uint32_t *)arp_hdr->ar_sip), ntohl(arp_dstip));
             return -1;
@@ -1146,6 +1164,18 @@ static int lb_parse_cfg(struct pcf_file *conf)
         lb_net_local_ip[cnt] = htonl(system_cfg->upf_ip[cnt].ipv4);
         lb_host_local_ip[cnt] = system_cfg->upf_ip[cnt].ipv4;
         memcpy(lb_net_local_ipv6[cnt], system_cfg->upf_ip[cnt].ipv6, IPV6_ALEN);
+        fprintf(stderr,
+            "OPENUPF_LBU_IP port=%d ip=%u.%u.%u.%u prefix=%u gateway=%u.%u.%u.%u\n",
+            cnt,
+            ((uint8_t *)&lb_net_local_ip[cnt])[0],
+            ((uint8_t *)&lb_net_local_ip[cnt])[1],
+            ((uint8_t *)&lb_net_local_ip[cnt])[2],
+            ((uint8_t *)&lb_net_local_ip[cnt])[3],
+            system_cfg->upf_ip[cnt].ipv4_prefix,
+            ((uint8_t *)&system_cfg->nexthop_net_ip[cnt])[0],
+            ((uint8_t *)&system_cfg->nexthop_net_ip[cnt])[1],
+            ((uint8_t *)&system_cfg->nexthop_net_ip[cnt])[2],
+            ((uint8_t *)&system_cfg->nexthop_net_ip[cnt])[3]);
     }
     lb_host_n6_ip_mask = num_to_mask(system_cfg->upf_ip[EN_PORT_N6].ipv4_prefix);
     ipv6_prefix_to_mask(lb_host_n6_ipv6_mask, system_cfg->upf_ip[EN_PORT_N6].ipv6_prefix);
