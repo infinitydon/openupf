@@ -90,17 +90,23 @@ void pfcp_parse_heartbeat_request(uint8_t* buffer,
         node_cb = upc_get_node_by_sa(sa);
     }
     if (NULL == node_cb) {
-        /* No association, do nothing */
-        LOG(UPC, ERR, "Process heartbeat request fail, no such node.");
-        return;
+        /*
+         * A PFCP heartbeat is a path liveness probe.  If the request is valid,
+         * answer the source address even when node lookup misses; otherwise a
+         * strict local lookup can cause interoperable SMFs to de-associate.
+         */
+        LOG(UPC, ERR, "Process heartbeat request without matched node; reply to packet source.");
     }
 
     /* Check time stamp */
-    if (peer_stamp > node_cb->assoc_config.recov_time) {
+    if ((NULL != node_cb) && (peer_stamp > node_cb->assoc_config.recov_time)) {
         LOG(UPC, RUNNING, "recover time stamp(%x) is different with local save(%x).",
             peer_stamp, node_cb->assoc_config.recov_time);
         node_cb->assoc_config.recov_time =  peer_stamp;
         /* Inconsistent timestamps still require a reply */
+    }
+    if (NULL != node_cb) {
+        ros_atomic16_init(&node_cb->hb_timeout_cnt);
     }
 
     upc_fill_ip_udp_hdr(resp_buffer, &resp_pos, sa);
