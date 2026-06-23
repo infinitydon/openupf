@@ -166,7 +166,7 @@ enum {
     } while(0);
 
 void dpdk_send_packet(struct rte_mbuf *m, uint16_t port_id, const char *func, int line);
-void dpdk_flush_tx_port(uint16_t port_id);
+int dpdk_flush_tx_port(uint16_t port_id);
 
 #if (defined(ENABLE_DPDK_DEBUG))
 struct rte_mbuf *__dpdk_alloc_mbuf(uint32_t line);
@@ -200,4 +200,3 @@ uint8_t *dpdk_get_mac(uint16_t portid);
 void dpdk_clear_stat(void);
 
 #endif /* __DPDK_H__ */
-

@@ -1677,7 +1677,7 @@ void dpdk_show_mempool_stat(struct cli_def *cli, int show_all)
     }
 }
 
-void dpdk_flush_tx_port(uint16_t port_id)
+int dpdk_flush_tx_port(uint16_t port_id)
 {
     unsigned lcore_id = rte_lcore_id();
     struct lcore_conf *qconf;
@@ -1694,6 +1694,8 @@ void dpdk_flush_tx_port(uint16_t port_id)
     if (sent) {
         dpdk_stat_send[lcore_id] += sent;
     }
+
+    return sent;
 }
 
 int dpdk_show_mempool(uint32_t ulCoreId, FILE *f)

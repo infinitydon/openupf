@@ -314,12 +314,27 @@ static inline void lb_fwd_to_external_network(void *m)
 static inline void lb_fwd_to_external_network_flush(void *m)
 {
     uint16_t port_id = lb_port_to_index(EN_LB_PORT_EXT);
+    struct rte_ether_hdr *eth = rte_pktmbuf_mtod((struct rte_mbuf *)m,
+        struct rte_ether_hdr *);
+    uint16_t pkt_len = rte_pktmbuf_pkt_len((struct rte_mbuf *)m);
+    struct rte_ether_addr src_mac = eth->s_addr;
+    struct rte_ether_addr dst_mac = eth->d_addr;
+    int sent;
 
     LOG(LB, PERIOD, "Packet forward to external network with flush.");
     lb_outer_add_vlan(m, EN_LB_PORT_EXT);
 
     dpdk_send_packet(m, port_id, __FUNCTION__, __LINE__);
-    dpdk_flush_tx_port(port_id);
+    sent = dpdk_flush_tx_port(port_id);
+    fprintf(stderr,
+        "OPENUPF_LBU_ARP_TX port=%u sent=%d len=%u src=%02x:%02x:%02x:%02x:%02x:%02x dst=%02x:%02x:%02x:%02x:%02x:%02x\n",
+        port_id, sent, pkt_len,
+        src_mac.addr_bytes[0], src_mac.addr_bytes[1],
+        src_mac.addr_bytes[2], src_mac.addr_bytes[3],
+        src_mac.addr_bytes[4], src_mac.addr_bytes[5],
+        dst_mac.addr_bytes[0], dst_mac.addr_bytes[1],
+        dst_mac.addr_bytes[2], dst_mac.addr_bytes[3],
+        dst_mac.addr_bytes[4], dst_mac.addr_bytes[5]);
     lb_packet_stat_increase(EN_LB_SENT_EXT_STAT);
 }
 
