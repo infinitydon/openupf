@@ -1073,6 +1073,22 @@ void fp_pkt_inner_ipv4_proc(fp_packet_info *pkt_info)
     else {
 
         LOG_TRACE(FASTPASS, RUNNING, trace_flag, "N3 fast table match failed");
+        fprintf(stderr,
+            "OPENUPF_FPU_N3_NOMATCH outer=%u.%u.%u.%u->%u.%u.%u.%u teid=%u inner=%u.%u.%u.%u->%u.%u.%u.%u proto=%u hash=0x%08x aux=0x%08x\n",
+            ((uint8_t *)&FlowGetL1Ipv4Header(&pkt_info->match_key)->source)[0],
+            ((uint8_t *)&FlowGetL1Ipv4Header(&pkt_info->match_key)->source)[1],
+            ((uint8_t *)&FlowGetL1Ipv4Header(&pkt_info->match_key)->source)[2],
+            ((uint8_t *)&FlowGetL1Ipv4Header(&pkt_info->match_key)->source)[3],
+            ((uint8_t *)&FlowGetL1Ipv4Header(&pkt_info->match_key)->dest)[0],
+            ((uint8_t *)&FlowGetL1Ipv4Header(&pkt_info->match_key)->dest)[1],
+            ((uint8_t *)&FlowGetL1Ipv4Header(&pkt_info->match_key)->dest)[2],
+            ((uint8_t *)&FlowGetL1Ipv4Header(&pkt_info->match_key)->dest)[3],
+            ntohl(gtp_hdr->teid),
+            ((uint8_t *)&ip_l2->source)[0], ((uint8_t *)&ip_l2->source)[1],
+            ((uint8_t *)&ip_l2->source)[2], ((uint8_t *)&ip_l2->source)[3],
+            ((uint8_t *)&ip_l2->dest)[0], ((uint8_t *)&ip_l2->dest)[1],
+            ((uint8_t *)&ip_l2->dest)[2], ((uint8_t *)&ip_l2->dest)[3],
+            ip_l2->protocol, hash_key, aux_info);
 
         /* Alloc new entry */
         entry = fp_pkt_no_match(pkt_info, FLOW_MASK_FIELD_ISSET(field_ofs, FLOW_FIELD_L2_TCP),
