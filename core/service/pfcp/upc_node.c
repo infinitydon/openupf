@@ -194,6 +194,7 @@ upc_node_cb *upc_get_node_by_sa(void *arg)
 {
     uint8_t node_loop;
     struct sockaddr *sa = (struct sockaddr *)arg;
+    upc_node_cb *fallback_node = NULL;
 
     if (AF_INET == sa->sa_family) {
         struct sockaddr_in *sa_v4 = (struct sockaddr_in *)sa, *node_sa_v4;
@@ -209,6 +210,9 @@ upc_node_cb *upc_get_node_by_sa(void *arg)
                 if ((node_sa_v4->sin_port == sa_v4->sin_port) &&
                     (node_sa_v4->sin_addr.s_addr == sa_v4->sin_addr.s_addr)) {
                     return &upc_node_mng.node[node_loop];
+                }
+                if (node_sa_v4->sin_addr.s_addr == sa_v4->sin_addr.s_addr) {
+                    fallback_node = &upc_node_mng.node[node_loop];
                 }
             } else {
                 continue;
@@ -229,13 +233,16 @@ upc_node_cb *upc_get_node_by_sa(void *arg)
                     (0 == memcmp(&node_sa_v6->sin6_addr, &sa_v6->sin6_addr, IPV6_ALEN))) {
                     return &upc_node_mng.node[node_loop];
                 }
+                if (0 == memcmp(&node_sa_v6->sin6_addr, &sa_v6->sin6_addr, IPV6_ALEN)) {
+                    fallback_node = &upc_node_mng.node[node_loop];
+                }
             } else {
                 continue;
             }
         }
     }
 
-    return NULL;
+    return fallback_node;
 }
 
 void upc_node_update_peer_sa(upc_node_cb *node_cb, struct sockaddr *sa)
