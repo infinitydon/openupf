@@ -446,12 +446,18 @@ static inline int lb_arp_pkt_proc(struct filter_key *match_key, struct rte_mbuf 
             LOG(LB, RUNNING, "N6 ARP packet");
         }
         else if (arp_dstip == lb_net_local_ip[EN_PORT_N9]) {
-            /* N6 ARP */
-            LOG(LB, RUNNING, "N9 ARP packet");
+            fprintf(stderr, "OPENUPF_LBU_ARP target=%u.%u.%u.%u match=N9 ignored\n",
+                ((uint8_t *)&arp_dstip)[0], ((uint8_t *)&arp_dstip)[1],
+                ((uint8_t *)&arp_dstip)[2], ((uint8_t *)&arp_dstip)[3]);
+            LOG(LB, RUNNING, "Ignore N9 ARP packet.");
+            return -1;
         }
         else if (arp_dstip == lb_net_local_ip[EN_PORT_N4]) {
-            /* N6 ARP */
-            LOG(LB, RUNNING, "N4 ARP packet");
+            fprintf(stderr, "OPENUPF_LBU_ARP target=%u.%u.%u.%u match=N4 ignored\n",
+                ((uint8_t *)&arp_dstip)[0], ((uint8_t *)&arp_dstip)[1],
+                ((uint8_t *)&arp_dstip)[2], ((uint8_t *)&arp_dstip)[3]);
+            LOG(LB, RUNNING, "Ignore N4 ARP packet.");
+            return -1;
         }
         else {
             fprintf(stderr,
