@@ -10444,6 +10444,19 @@ void upc_parse_session_establishment_request(uint8_t* buffer,
             }
         }
     }
+    if (AF_INET == sa->sa_family) {
+        struct sockaddr_in *sa_v4 = (struct sockaddr_in *)sa;
+        fprintf(stderr,
+            "OPENUPF_SESSION_LOOKUP seq=%u node=%p active=%u selected=%u node_id_type=%u node_id=%u.%u.%u.%u peer=%u.%u.%u.%u:%u\n",
+            pkt_seq, (void *)node_cb, active_node_num,
+            node_cb ? node_cb->index : 0xffffffff,
+            node_id ? node_id->type.d.type : 0xff,
+            node_id ? node_id->node_id[0] : 0, node_id ? node_id->node_id[1] : 0,
+            node_id ? node_id->node_id[2] : 0, node_id ? node_id->node_id[3] : 0,
+            ((uint8_t *)&sa_v4->sin_addr.s_addr)[0], ((uint8_t *)&sa_v4->sin_addr.s_addr)[1],
+            ((uint8_t *)&sa_v4->sin_addr.s_addr)[2], ((uint8_t *)&sa_v4->sin_addr.s_addr)[3],
+            ntohs(sa_v4->sin_port));
+    }
     if (unlikely(NULL == node_cb)) {
         LOG(UPC, ERR, "get node cb failed.");
 

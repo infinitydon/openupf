@@ -784,7 +784,7 @@ int pfcp_local_association_setup(session_association_setup *assoc_setup)
 
     /* Add parameters */
     ros_rwlock_write_lock(&node_cb->lock); /* lock */
-    memcpy(&node_cb->assoc_config, &assoc_setup, sizeof(assoc_setup));
+    memcpy(&node_cb->assoc_config, assoc_setup, sizeof(*assoc_setup));
 
     /* Merge features */
     upc_node_merge_features(node_cb);
@@ -1036,6 +1036,17 @@ void pfcp_parse_association_setup_request(uint8_t* buffer,
         assoc_setup.node_id.node_id[1],
         assoc_setup.node_id.node_id[2],
         assoc_setup.node_id.node_id[3]);
+    if (AF_INET == sa->sa_family) {
+        struct sockaddr_in *sa_v4 = (struct sockaddr_in *)sa;
+        fprintf(stderr,
+            "OPENUPF_ASSOC_SETUP seq=%u idx=%u node_id=%u.%u.%u.%u peer=%u.%u.%u.%u:%u\n",
+            pkt_seq, node_cb->index,
+            assoc_setup.node_id.node_id[0], assoc_setup.node_id.node_id[1],
+            assoc_setup.node_id.node_id[2], assoc_setup.node_id.node_id[3],
+            ((uint8_t *)&sa_v4->sin_addr.s_addr)[0], ((uint8_t *)&sa_v4->sin_addr.s_addr)[1],
+            ((uint8_t *)&sa_v4->sin_addr.s_addr)[2], ((uint8_t *)&sa_v4->sin_addr.s_addr)[3],
+            ntohs(sa_v4->sin_port));
+    }
 
     assoc_setup.msg_header.msg_type = SESS_ASSOCIATION_SETUP_REQUEST;
     assoc_setup.msg_header.node_id_index = node_cb->index;
