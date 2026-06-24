@@ -727,6 +727,10 @@ static void lb_internal_pkt_entry(char *buf, int len, struct rte_mbuf *mbuf)
                 return;
             }
 
+            if (unlikely(EN_PORT_N6 != lb_select_net_port_by_ipv4(ipv4->dest))) {
+                goto dissect_packet;
+            }
+
             key.v4_value = ipv4->dest;
             lb_get_nexthop_ip(&key.v4_value, &ipv4->source, SESSION_IP_V4);
             fprintf(stderr,
@@ -764,6 +768,7 @@ static void lb_internal_pkt_entry(char *buf, int len, struct rte_mbuf *mbuf)
             return;
         }
 
+dissect_packet:
         /* Dissecting packet */
         if (unlikely(packet_dissect(&desc, &match_key) < 0)) {
             LOG(LB, PERIOD, "Packet dissect failed!");
