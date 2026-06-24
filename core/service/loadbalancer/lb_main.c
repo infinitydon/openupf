@@ -652,10 +652,23 @@ static void lb_internal_pkt_entry(char *buf, int len, struct rte_mbuf *mbuf)
                 {
                     struct pro_ipv4_hdr *ipv4 = FlowGetL1Ipv4Header(&match_key);
                     lb_neighbor_key key = {.v4_value = ipv4->dest};
+                    uint32_t orig_dest = ipv4->dest;
 
                     lb_get_nexthop_ip(&key.v4_value, &ipv4->source, SESSION_IP_V4);
+                    fprintf(stderr,
+                        "OPENUPF_LBU_INT_FWD src=%u.%u.%u.%u dst=%u.%u.%u.%u next=%u.%u.%u.%u\n",
+                        ((uint8_t *)&ipv4->source)[0], ((uint8_t *)&ipv4->source)[1],
+                        ((uint8_t *)&ipv4->source)[2], ((uint8_t *)&ipv4->source)[3],
+                        ((uint8_t *)&orig_dest)[0], ((uint8_t *)&orig_dest)[1],
+                        ((uint8_t *)&orig_dest)[2], ((uint8_t *)&orig_dest)[3],
+                        ((uint8_t *)&key.v4_value)[0], ((uint8_t *)&key.v4_value)[1],
+                        ((uint8_t *)&key.v4_value)[2], ((uint8_t *)&key.v4_value)[3]);
 
                     if (0 > lb_neighbor_cache_get_mac(&key, dest_mac)) {
+                        fprintf(stderr,
+                            "OPENUPF_LBU_INT_NEIGH_MISS next=%u.%u.%u.%u\n",
+                            ((uint8_t *)&key.v4_value)[0], ((uint8_t *)&key.v4_value)[1],
+                            ((uint8_t *)&key.v4_value)[2], ((uint8_t *)&key.v4_value)[3]);
                         if (-1 == lb_neighbor_wait_reply(&key, SESSION_IP_V4, (void *)mbuf)) {
                             lb_free_pkt(mbuf);
                             LOG(LB, RUNNING, "Destination 0x%08x Host Unreachable, drop packet.",
@@ -663,6 +676,11 @@ static void lb_internal_pkt_entry(char *buf, int len, struct rte_mbuf *mbuf)
                         }
                         return;
                     }
+                    fprintf(stderr,
+                        "OPENUPF_LBU_INT_NEIGH_HIT next=%u.%u.%u.%u mac=%02x:%02x:%02x:%02x:%02x:%02x\n",
+                        ((uint8_t *)&key.v4_value)[0], ((uint8_t *)&key.v4_value)[1],
+                        ((uint8_t *)&key.v4_value)[2], ((uint8_t *)&key.v4_value)[3],
+                        dest_mac[0], dest_mac[1], dest_mac[2], dest_mac[3], dest_mac[4], dest_mac[5]);
 
                     lb_mac_updating(mbuf, (struct rte_ether_addr *)lb_local_port_mac[EN_LB_PORT_EXT],
                         (struct rte_ether_addr *)dest_mac);
