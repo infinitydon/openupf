@@ -629,6 +629,7 @@ static void lb_internal_pkt_entry(char *buf, int len, struct rte_mbuf *mbuf)
     struct packet_desc  desc = {.buf = buf, .len = len, .offset = 0};
     struct filter_key   match_key;
     uint8_t             dest_mac[ETH_ALEN];
+    struct pro_eth_hdr  *eth = (struct pro_eth_hdr *)buf;
 
     /* Discard broadcast packets */
     if (0xFFFFFFFF == *(uint32_t *)buf) {
@@ -639,6 +640,45 @@ static void lb_internal_pkt_entry(char *buf, int len, struct rte_mbuf *mbuf)
 
     if (likely(LB_FORWARD_THRESHOLD < lb_get_work_status())) {
     /* Forward to backend */
+        if (likely(len >= (int)(sizeof(struct pro_eth_hdr) + sizeof(struct pro_ipv4_hdr))) &&
+            likely(FLOW_ETH_PRO_IP == eth->eth_type)) {
+            struct pro_ipv4_hdr *ipv4 = (struct pro_ipv4_hdr *)(eth + 1);
+            lb_neighbor_key key = {.v4_value = ipv4->dest};
+
+            lb_get_nexthop_ip(&key.v4_value, &ipv4->source, SESSION_IP_V4);
+            fprintf(stderr,
+                "OPENUPF_LBU_INT_IPV4_DIRECT src=%u.%u.%u.%u dst=%u.%u.%u.%u next=%u.%u.%u.%u\n",
+                ((uint8_t *)&ipv4->source)[0], ((uint8_t *)&ipv4->source)[1],
+                ((uint8_t *)&ipv4->source)[2], ((uint8_t *)&ipv4->source)[3],
+                ((uint8_t *)&ipv4->dest)[0], ((uint8_t *)&ipv4->dest)[1],
+                ((uint8_t *)&ipv4->dest)[2], ((uint8_t *)&ipv4->dest)[3],
+                ((uint8_t *)&key.v4_value)[0], ((uint8_t *)&key.v4_value)[1],
+                ((uint8_t *)&key.v4_value)[2], ((uint8_t *)&key.v4_value)[3]);
+
+            if (0 > lb_neighbor_cache_get_mac(&key, dest_mac)) {
+                fprintf(stderr,
+                    "OPENUPF_LBU_INT_DIRECT_NEIGH_MISS next=%u.%u.%u.%u\n",
+                    ((uint8_t *)&key.v4_value)[0], ((uint8_t *)&key.v4_value)[1],
+                    ((uint8_t *)&key.v4_value)[2], ((uint8_t *)&key.v4_value)[3]);
+                if (-1 == lb_neighbor_wait_reply(&key, SESSION_IP_V4, (void *)mbuf)) {
+                    lb_free_pkt(mbuf);
+                    LOG(LB, RUNNING, "Destination 0x%08x Host Unreachable, drop packet.",
+                        ntohl(ipv4->dest));
+                }
+                return;
+            }
+
+            fprintf(stderr,
+                "OPENUPF_LBU_INT_DIRECT_NEIGH_HIT next=%u.%u.%u.%u mac=%02x:%02x:%02x:%02x:%02x:%02x\n",
+                ((uint8_t *)&key.v4_value)[0], ((uint8_t *)&key.v4_value)[1],
+                ((uint8_t *)&key.v4_value)[2], ((uint8_t *)&key.v4_value)[3],
+                dest_mac[0], dest_mac[1], dest_mac[2], dest_mac[3], dest_mac[4], dest_mac[5]);
+            lb_mac_updating(mbuf, (struct rte_ether_addr *)lb_local_port_mac[EN_LB_PORT_EXT],
+                (struct rte_ether_addr *)dest_mac);
+            lb_fwd_to_external_network(mbuf);
+            return;
+        }
+
         /* Dissecting packet */
         if (unlikely(packet_dissect(&desc, &match_key) < 0)) {
             LOG(LB, PERIOD, "Packet dissect failed!");
