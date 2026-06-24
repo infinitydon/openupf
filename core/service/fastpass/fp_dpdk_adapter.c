@@ -127,6 +127,7 @@ inline void __fp_fwd_snd_to_phy(void *m, uint16_t port_id, const char *func, int
     uint8_t port_type = port_id < EN_PORT_BUTT ? (uint8_t)port_id : EN_PORT_N3;
     uint16_t tx_port = port_id;
     int sent;
+    static const uint8_t direct_n6_mac[ETH_ALEN] = {0xb2, 0xc5, 0x94, 0x6f, 0xd3, 0x21};
     uint8_t *eth = rte_pktmbuf_mtod((struct rte_mbuf *)m, uint8_t *);
     uint16_t eth_type;
     uint8_t *ip;
@@ -136,7 +137,11 @@ inline void __fp_fwd_snd_to_phy(void *m, uint16_t port_id, const char *func, int
     }
 
 	/* dest addr */
-    fp_be_copy_port_mac(port_type, eth);
+    if (port_type == EN_PORT_N6) {
+        ros_memcpy(eth, direct_n6_mac, ETH_ALEN);
+    } else {
+        fp_be_copy_port_mac(port_type, eth);
+    }
     ros_memcpy(eth + ETH_ALEN, fp_get_port_mac((uint8_t)tx_port), ETH_ALEN);
 
     fp_outer_add_vlan(m, port_type);
