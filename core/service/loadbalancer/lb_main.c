@@ -160,6 +160,22 @@ static inline uint16_t lb_port_to_index(uint16_t port)
     return lb_dpdk_port_num == (uint16_t)EN_LB_PORT_BUTT ? (uint16_t)port : 0;
 }
 
+static inline int lb_is_local_l2_frame(const struct pro_eth_hdr *eth, uint16_t port_id)
+{
+    const uint8_t *local_mac;
+
+    if (unlikely(port_id >= EN_LB_PORT_BUTT)) {
+        return FALSE;
+    }
+
+    if (eth->dest[0] & 0x01) {
+        return TRUE;
+    }
+
+    local_mac = lb_local_port_mac[port_id];
+    return memcmp(eth->dest, local_mac, ETH_ALEN) == 0;
+}
+
 static inline uint8_t lb_mb_work_state_get(void)
 {
     return lb_mb_is_working;
@@ -922,6 +938,24 @@ static inline void lb_external_pkt_entry(char *buf, int len, struct rte_mbuf *mb
 int lb_data_pkt_entry(char *buf, int len, uint16_t port_id, void *arg)
 {
     if (likely(lb_work_flag)) {
+        if (likely(len >= (int)sizeof(struct pro_eth_hdr))) {
+            struct pro_eth_hdr *eth = (struct pro_eth_hdr *)buf;
+
+            if (unlikely(!lb_is_local_l2_frame(eth, port_id))) {
+                fprintf(stderr,
+                    "OPENUPF_LBU_DROP_NONLOCAL port=%u len=%d eth_dst=%02x:%02x:%02x:%02x:%02x:%02x "
+                    "local=%02x:%02x:%02x:%02x:%02x:%02x\n",
+                    port_id, len,
+                    eth->dest[0], eth->dest[1], eth->dest[2],
+                    eth->dest[3], eth->dest[4], eth->dest[5],
+                    lb_local_port_mac[port_id][0], lb_local_port_mac[port_id][1],
+                    lb_local_port_mac[port_id][2], lb_local_port_mac[port_id][3],
+                    lb_local_port_mac[port_id][4], lb_local_port_mac[port_id][5]);
+                lb_free_pkt((struct rte_mbuf *)arg);
+                return 0;
+            }
+        }
+
         if (len >= (int)(sizeof(struct pro_eth_hdr) + sizeof(struct pro_ipv4_hdr) + sizeof(struct pro_udp_hdr))) {
             struct pro_eth_hdr *eth = (struct pro_eth_hdr *)buf;
             struct pro_ipv4_hdr *ip = (struct pro_ipv4_hdr *)(eth + 1);
