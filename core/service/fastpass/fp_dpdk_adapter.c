@@ -127,6 +127,8 @@ inline void __fp_fwd_snd_to_phy(void *m, uint16_t port_id, const char *func, int
     uint8_t port_type = port_id < EN_PORT_BUTT ? (uint8_t)port_id : EN_PORT_N3;
     uint16_t tx_port = port_id;
     uint8_t *eth = rte_pktmbuf_mtod((struct rte_mbuf *)m, uint8_t *);
+    uint16_t eth_type;
+    uint8_t *ip;
 
     if (unlikely(tx_port >= dpdk_get_port_num())) {
         tx_port = 0;
@@ -137,6 +139,31 @@ inline void __fp_fwd_snd_to_phy(void *m, uint16_t port_id, const char *func, int
     ros_memcpy(eth + ETH_ALEN, fp_get_port_mac((uint8_t)tx_port), ETH_ALEN);
 
     fp_outer_add_vlan(m, port_type);
+
+    eth = rte_pktmbuf_mtod((struct rte_mbuf *)m, uint8_t *);
+    eth_type = (uint16_t)((eth[12] << 8) | eth[13]);
+    if (eth_type == FLOW_ETH_PRO_8021Q || eth_type == FLOW_ETH_PRO_8021AD) {
+        eth_type = (uint16_t)((eth[16] << 8) | eth[17]);
+        ip = eth + 18;
+    } else {
+        ip = eth + 14;
+    }
+    if (eth_type == FLOW_ETH_PRO_IP) {
+        fprintf(stderr,
+            "OPENUPF_FPU_TX logical_port=%u tx_port=%u len=%u eth_dst=%02x:%02x:%02x:%02x:%02x:%02x "
+            "eth_src=%02x:%02x:%02x:%02x:%02x:%02x ip=%u.%u.%u.%u->%u.%u.%u.%u proto=%u\n",
+            port_type, tx_port, rte_pktmbuf_pkt_len((struct rte_mbuf *)m),
+            eth[0], eth[1], eth[2], eth[3], eth[4], eth[5],
+            eth[6], eth[7], eth[8], eth[9], eth[10], eth[11],
+            ip[12], ip[13], ip[14], ip[15], ip[16], ip[17], ip[18], ip[19], ip[9]);
+    } else {
+        fprintf(stderr,
+            "OPENUPF_FPU_TX logical_port=%u tx_port=%u len=%u eth_dst=%02x:%02x:%02x:%02x:%02x:%02x "
+            "eth_src=%02x:%02x:%02x:%02x:%02x:%02x eth_type=0x%04x\n",
+            port_type, tx_port, rte_pktmbuf_pkt_len((struct rte_mbuf *)m),
+            eth[0], eth[1], eth[2], eth[3], eth[4], eth[5],
+            eth[6], eth[7], eth[8], eth[9], eth[10], eth[11], eth_type);
+    }
 
     dpdk_send_packet(m, tx_port, func, line);
 }
@@ -365,5 +392,4 @@ void fp_get_fast_head_symbol(char *symbol_name, uint32_t type)
 void fp_get_fast_bucket_symbol(char *symbol_name, uint32_t type)
 {
 }
-
 
