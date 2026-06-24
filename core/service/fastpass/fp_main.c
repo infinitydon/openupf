@@ -144,6 +144,36 @@ uint32_t fp_get_time(void)
     return ros_getime();
 }
 
+static inline int fp_l2_accept_local_unicast(char *buf, int len, uint16_t port_id)
+{
+    struct pro_eth_hdr *eth;
+    uint8_t *local_mac;
+
+    if (unlikely(len < (int)sizeof(struct pro_eth_hdr))) {
+        return G_TRUE;
+    }
+
+    eth = (struct pro_eth_hdr *)buf;
+    if (eth->dest[0] & 0x01) {
+        return G_TRUE;
+    }
+
+    local_mac = fp_get_port_mac((uint8_t)port_id);
+    if (0 == memcmp(eth->dest, local_mac, ETH_ALEN)) {
+        return G_TRUE;
+    }
+
+    fprintf(stderr,
+        "OPENUPF_FPU_DROP_NONLOCAL port=%u len=%d eth_dst=%02x:%02x:%02x:%02x:%02x:%02x "
+        "local=%02x:%02x:%02x:%02x:%02x:%02x\n",
+        port_id, len,
+        eth->dest[0], eth->dest[1], eth->dest[2],
+        eth->dest[3], eth->dest[4], eth->dest[5],
+        local_mac[0], local_mac[1], local_mac[2],
+        local_mac[3], local_mac[4], local_mac[5]);
+    return G_FALSE;
+}
+
 void fp_forward_pkt_to_sp(fp_packet_info *pkt_info, fp_fast_entry *entry,
     int trace_flag, uint8_t pkt_type)
 {
@@ -190,6 +220,11 @@ int fp_phy_pkt_entry(char *buf, int len, uint16_t port_id, void *arg)
 {
     struct packet_desc  desc = {.buf = buf, .len = len, .offset = 0};
     fp_packet_info      pkt_info = {.buf = buf, .len = len, .arg = arg, .port_id = port_id};
+
+    if (unlikely(!fp_l2_accept_local_unicast(buf, len, port_id))) {
+        fp_free_pkt(arg);
+        return 0;
+    }
 
     if (len >= (int)(sizeof(struct pro_eth_hdr) + sizeof(struct pro_ipv4_hdr) + sizeof(struct pro_udp_hdr))) {
         struct pro_eth_hdr *eth = (struct pro_eth_hdr *)buf;
@@ -1536,4 +1571,3 @@ help:
 
     return -1;
 }
-
