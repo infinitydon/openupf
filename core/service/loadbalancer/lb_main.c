@@ -227,13 +227,20 @@ void lb_get_nexthop_ip(void *dst_ip, void *src_ip, uint8_t ip_ver)
                 uint8_t prefix_diff;
 
                 /* First confirm the network path */
-                if (!(src_ipv4 ^ lb_net_local_ip[EN_PORT_N3])) {
+                if (!(src_ipv4 ^ lb_net_local_ip[EN_PORT_N3]) ||
+                    ((dst_ipv4 >> (32 - sys_cfg->upf_ip[EN_PORT_N3].ipv4_prefix)) ==
+                    (sys_cfg->upf_ip[EN_PORT_N3].ipv4 >> (32 - sys_cfg->upf_ip[EN_PORT_N3].ipv4_prefix)))) {
                     port_type = EN_PORT_N3;
-                } else if ((ntohl(src_ipv4) & lb_host_n6_ip_mask) == lb_host_N6_prefix_ip) {
+                } else if ((ntohl(src_ipv4) & lb_host_n6_ip_mask) == lb_host_N6_prefix_ip ||
+                    ((dst_ipv4 & lb_host_n6_ip_mask) == lb_host_N6_prefix_ip)) {
                     port_type = EN_PORT_N6;
-                } else if (!(src_ipv4 ^ lb_net_local_ip[EN_PORT_N9])) {
+                } else if (!(src_ipv4 ^ lb_net_local_ip[EN_PORT_N9]) ||
+                    ((dst_ipv4 >> (32 - sys_cfg->upf_ip[EN_PORT_N9].ipv4_prefix)) ==
+                    (sys_cfg->upf_ip[EN_PORT_N9].ipv4 >> (32 - sys_cfg->upf_ip[EN_PORT_N9].ipv4_prefix)))) {
                     port_type = EN_PORT_N9;
-                } else if (!(src_ipv4 ^ lb_net_local_ip[EN_PORT_N4])) {
+                } else if (!(src_ipv4 ^ lb_net_local_ip[EN_PORT_N4]) ||
+                    ((dst_ipv4 >> (32 - sys_cfg->upf_ip[EN_PORT_N4].ipv4_prefix)) ==
+                    (sys_cfg->upf_ip[EN_PORT_N4].ipv4 >> (32 - sys_cfg->upf_ip[EN_PORT_N4].ipv4_prefix)))) {
                     port_type = EN_PORT_N4;
                 }
 
