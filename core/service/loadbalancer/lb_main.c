@@ -694,7 +694,7 @@ static void lb_internal_pkt_entry(char *buf, int len, struct rte_mbuf *mbuf)
             likely(FLOW_ETH_PRO_IP == eth->eth_type)) {
             uint16_t ipv4_offset = ETH_HLEN;
             struct pro_ipv4_hdr *ipv4 = lb_find_internal_ipv4(buf, len, &ipv4_offset);
-            lb_neighbor_key key;
+            lb_neighbor_key key = {0};
 
             if (unlikely(NULL == ipv4)) {
                 fprintf(stderr, "OPENUPF_LBU_INT_IPV4_NOT_FOUND len=%d\n", len);
