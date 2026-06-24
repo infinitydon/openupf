@@ -8,6 +8,8 @@
 #include "lb_dpdk_cache.h"
 #include "lb_neighbor_cache.h"
 
+extern uint8_t lb_select_net_port_by_ipv4(uint32_t dest_net_ip);
+
 static lb_neighbor_cache_mgmt g_lb_neighbor_cache_mgmt = {.max_num = 500};
 
 
@@ -211,8 +213,17 @@ uint32_t lb_neighbor_build_arp_request(char *buf, uint32_t dest_net_ip)
     struct pro_eth_hdr *eth = NULL;
     struct pro_arp_hdr *buf_arp_hdr = NULL;
     uint8_t *upf_mac;
+    uint8_t src_port = lb_select_net_port_by_ipv4(dest_net_ip);
+    uint32_t src_net_ip = lb_get_local_net_ipv4(src_port);
 
     LOG(SESSION, RUNNING, "Build ARP request, target ip: 0x%08x.", ntohl(dest_net_ip));
+    fprintf(stderr,
+        "OPENUPF_LBU_ARP_BUILD target=%u.%u.%u.%u src_port=%u src_ip=%u.%u.%u.%u\n",
+        ((uint8_t *)&dest_net_ip)[0], ((uint8_t *)&dest_net_ip)[1],
+        ((uint8_t *)&dest_net_ip)[2], ((uint8_t *)&dest_net_ip)[3],
+        src_port,
+        ((uint8_t *)&src_net_ip)[0], ((uint8_t *)&src_net_ip)[1],
+        ((uint8_t *)&src_net_ip)[2], ((uint8_t *)&src_net_ip)[3]);
 
     upf_mac = lb_get_local_port_mac(EN_LB_PORT_EXT);
 
@@ -230,7 +241,7 @@ uint32_t lb_neighbor_build_arp_request(char *buf, uint32_t dest_net_ip)
     buf_arp_hdr->ar_pln = 4;
     buf_arp_hdr->ar_op  = htons(1);
     memcpy(buf_arp_hdr->ar_sha, upf_mac, ETH_ALEN);
-    *(uint32_t *)(buf_arp_hdr->ar_sip) = lb_get_local_net_ipv4(EN_PORT_N3);
+    *(uint32_t *)(buf_arp_hdr->ar_sip) = src_net_ip;
     memset(buf_arp_hdr->ar_tha, 0, ETH_ALEN);
     *(uint32_t *)(buf_arp_hdr->ar_tip) = dest_net_ip;
     buf_len += sizeof(struct pro_arp_hdr);

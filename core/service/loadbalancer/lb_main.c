@@ -213,6 +213,29 @@ uint32_t lb_get_local_net_ipv4(uint8_t port)
     return lb_net_local_ip[port];
 }
 
+uint8_t lb_select_net_port_by_ipv4(uint32_t dest_net_ip)
+{
+    uint32_t dest_ipv4 = ntohl(dest_net_ip);
+    lb_system_config *sys_cfg = lb_get_system_config();
+
+    if (((dest_ipv4 >> (32 - sys_cfg->upf_ip[EN_PORT_N6].ipv4_prefix)) ==
+        (sys_cfg->upf_ip[EN_PORT_N6].ipv4 >> (32 - sys_cfg->upf_ip[EN_PORT_N6].ipv4_prefix)))) {
+        return EN_PORT_N6;
+    }
+
+    if (((dest_ipv4 >> (32 - sys_cfg->upf_ip[EN_PORT_N9].ipv4_prefix)) ==
+        (sys_cfg->upf_ip[EN_PORT_N9].ipv4 >> (32 - sys_cfg->upf_ip[EN_PORT_N9].ipv4_prefix)))) {
+        return EN_PORT_N9;
+    }
+
+    if (((dest_ipv4 >> (32 - sys_cfg->upf_ip[EN_PORT_N4].ipv4_prefix)) ==
+        (sys_cfg->upf_ip[EN_PORT_N4].ipv4 >> (32 - sys_cfg->upf_ip[EN_PORT_N4].ipv4_prefix)))) {
+        return EN_PORT_N4;
+    }
+
+    return EN_PORT_N3;
+}
+
 void lb_get_nexthop_ip(void *dst_ip, void *src_ip, uint8_t ip_ver)
 {
     lb_system_config *sys_cfg = lb_get_system_config();
