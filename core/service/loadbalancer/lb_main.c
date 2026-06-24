@@ -4,6 +4,7 @@
  ***************************************************************/
 
 #include "service.h"
+#include <string.h>
 #include <rte_mbuf.h>
 #include <rte_meter.h>
 
@@ -382,6 +383,30 @@ static struct pro_ipv4_hdr *lb_find_internal_ipv4(char *buf, int len, uint16_t *
     return NULL;
 }
 
+static inline void lb_normalize_internal_ipv4_frame(struct rte_mbuf *mbuf, uint16_t ipv4_offset)
+{
+    uint16_t len;
+    uint16_t gap;
+    uint8_t *pkt;
+
+    if (likely(ETH_HLEN == ipv4_offset)) {
+        return;
+    }
+
+    len = (uint16_t)rte_pktmbuf_pkt_len(mbuf);
+    if (unlikely(ipv4_offset <= ETH_HLEN || ipv4_offset >= len)) {
+        return;
+    }
+
+    gap = (uint16_t)(ipv4_offset - ETH_HLEN);
+    pkt = rte_pktmbuf_mtod(mbuf, uint8_t *);
+    memmove(pkt + ETH_HLEN, pkt + ipv4_offset, len - ipv4_offset);
+    pkt_buf_set_len(mbuf, len - gap);
+    fprintf(stderr,
+        "OPENUPF_LBU_INT_IPV4_NORMALIZE offset=%u gap=%u old_len=%u new_len=%u\n",
+        ipv4_offset, gap, len, (uint16_t)(len - gap));
+}
+
 static inline void lb_fwd_to_external_network(void *m)
 {
     LOG(LB, PERIOD, "Packet forward to external network.");
@@ -732,6 +757,7 @@ static void lb_internal_pkt_entry(char *buf, int len, struct rte_mbuf *mbuf)
                 ((uint8_t *)&key.v4_value)[0], ((uint8_t *)&key.v4_value)[1],
                 ((uint8_t *)&key.v4_value)[2], ((uint8_t *)&key.v4_value)[3],
                 dest_mac[0], dest_mac[1], dest_mac[2], dest_mac[3], dest_mac[4], dest_mac[5]);
+            lb_normalize_internal_ipv4_frame(mbuf, ipv4_offset);
             lb_mac_updating(mbuf, (struct rte_ether_addr *)lb_local_port_mac[EN_LB_PORT_EXT],
                 (struct rte_ether_addr *)dest_mac);
             lb_fwd_to_external_network_flush(mbuf);
