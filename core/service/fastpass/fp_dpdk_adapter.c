@@ -126,6 +126,7 @@ inline void __fp_fwd_snd_to_phy(void *m, uint16_t port_id, const char *func, int
 {
     uint8_t port_type = port_id < EN_PORT_BUTT ? (uint8_t)port_id : EN_PORT_N3;
     uint16_t tx_port = port_id;
+    int sent;
     uint8_t *eth = rte_pktmbuf_mtod((struct rte_mbuf *)m, uint8_t *);
     uint16_t eth_type;
     uint8_t *ip;
@@ -166,6 +167,10 @@ inline void __fp_fwd_snd_to_phy(void *m, uint16_t port_id, const char *func, int
     }
 
     dpdk_send_packet(m, tx_port, func, line);
+    sent = dpdk_flush_tx_port(tx_port);
+    if (sent) {
+        fprintf(stderr, "OPENUPF_FPU_TX_FLUSH tx_port=%u sent=%d\n", tx_port, sent);
+    }
 }
 
 void fp_dpdk_add_cblk_buf(void *cblock)
@@ -392,4 +397,3 @@ void fp_get_fast_head_symbol(char *symbol_name, uint32_t type)
 void fp_get_fast_bucket_symbol(char *symbol_name, uint32_t type)
 {
 }
-
