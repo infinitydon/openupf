@@ -332,6 +332,33 @@ void lb_mac_updating_public(void *m, uint8_t *src_mac, uint8_t *dest_mac)
         (struct rte_ether_addr *)dest_mac);
 }
 
+static struct pro_ipv4_hdr *lb_find_internal_ipv4(char *buf, int len, uint16_t *offset)
+{
+    uint16_t pos;
+    uint16_t max_pos = len > 64 ? 64 : (uint16_t)len;
+
+    for (pos = ETH_HLEN; pos + sizeof(struct pro_ipv4_hdr) <= max_pos; ++pos) {
+        struct pro_ipv4_hdr *ipv4 = (struct pro_ipv4_hdr *)(buf + pos);
+        uint16_t hdr_len;
+        uint16_t total_len;
+
+        if (ipv4->version != 4 || ipv4->ihl < 5) {
+            continue;
+        }
+
+        hdr_len = (uint16_t)(ipv4->ihl << 2);
+        total_len = ntohs(ipv4->tot_len);
+        if (total_len < hdr_len || pos + total_len > (uint16_t)len) {
+            continue;
+        }
+
+        *offset = pos;
+        return ipv4;
+    }
+
+    return NULL;
+}
+
 static inline void lb_fwd_to_external_network(void *m)
 {
     LOG(LB, PERIOD, "Packet forward to external network.");
@@ -642,12 +669,21 @@ static void lb_internal_pkt_entry(char *buf, int len, struct rte_mbuf *mbuf)
     /* Forward to backend */
         if (likely(len >= (int)(sizeof(struct pro_eth_hdr) + sizeof(struct pro_ipv4_hdr))) &&
             likely(FLOW_ETH_PRO_IP == eth->eth_type)) {
-            struct pro_ipv4_hdr *ipv4 = (struct pro_ipv4_hdr *)(eth + 1);
-            lb_neighbor_key key = {.v4_value = ipv4->dest};
+            uint16_t ipv4_offset = ETH_HLEN;
+            struct pro_ipv4_hdr *ipv4 = lb_find_internal_ipv4(buf, len, &ipv4_offset);
+            lb_neighbor_key key;
 
+            if (unlikely(NULL == ipv4)) {
+                fprintf(stderr, "OPENUPF_LBU_INT_IPV4_NOT_FOUND len=%d\n", len);
+                lb_free_pkt(mbuf);
+                return;
+            }
+
+            key.v4_value = ipv4->dest;
             lb_get_nexthop_ip(&key.v4_value, &ipv4->source, SESSION_IP_V4);
             fprintf(stderr,
-                "OPENUPF_LBU_INT_IPV4_DIRECT src=%u.%u.%u.%u dst=%u.%u.%u.%u next=%u.%u.%u.%u\n",
+                "OPENUPF_LBU_INT_IPV4_DIRECT offset=%u src=%u.%u.%u.%u dst=%u.%u.%u.%u next=%u.%u.%u.%u\n",
+                ipv4_offset,
                 ((uint8_t *)&ipv4->source)[0], ((uint8_t *)&ipv4->source)[1],
                 ((uint8_t *)&ipv4->source)[2], ((uint8_t *)&ipv4->source)[3],
                 ((uint8_t *)&ipv4->dest)[0], ((uint8_t *)&ipv4->dest)[1],
