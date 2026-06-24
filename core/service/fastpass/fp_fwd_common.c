@@ -578,9 +578,29 @@ int fp_pkt_buffer_action_process(fp_packet_info *pkt_info, fp_fast_table *head, 
 
 void fp_pkt_send2phy(void *m, fp_cblk_entry *cblk, uint8_t fwd_if, uint16_t port_id)
 {
+    uint16_t tx_port = port_id;
+
+    switch (fwd_if) {
+        case EN_COMM_DST_IF_ACCESS:
+            tx_port = EN_PORT_N3;
+            break;
+
+        case EN_COMM_DST_IF_CORE:
+            tx_port = EN_PORT_N6;
+            break;
+
+        case EN_COMM_DST_IF_CP:
+            tx_port = EN_PORT_N4;
+            break;
+
+        default:
+            break;
+    }
+
     /* Send buffer */
 #ifdef CONFIG_FP_DPDK_PORT
     if (unlikely(cblk)) {
+        cblk->port = tx_port;
         switch (fwd_if) {
             case EN_COMM_DST_IF_ACCESS:
                 fp_dpdk_add_cblk_buf(cblk);
@@ -596,7 +616,7 @@ void fp_pkt_send2phy(void *m, fp_cblk_entry *cblk, uint8_t fwd_if, uint16_t port
     else
 #endif
     {
-        fp_fwd_snd_to_phy(m, port_id);
+        fp_fwd_snd_to_phy(m, tx_port);
         switch (fwd_if) {
             case EN_COMM_DST_IF_ACCESS:
                 fp_packet_stat_count(COMM_MSG_FP_STAT_DOWN_FWD);

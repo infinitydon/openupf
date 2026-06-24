@@ -124,10 +124,14 @@ static inline void fp_outer_add_vlan(void *m, uint8_t port_type)
 
 inline void __fp_fwd_snd_to_phy(void *m, uint16_t port_id, const char *func, int line)
 {
-	/* dest addr */
-    fp_be_copy_port_mac(EN_PORT_N3, rte_pktmbuf_mtod((struct rte_mbuf *)m, uint8_t *));
+    uint8_t port_type = port_id < EN_PORT_BUTT ? (uint8_t)port_id : EN_PORT_N3;
+    uint8_t *eth = rte_pktmbuf_mtod((struct rte_mbuf *)m, uint8_t *);
 
-    fp_outer_add_vlan(m, EN_PORT_N3);
+	/* dest addr */
+    fp_be_copy_port_mac(port_type, eth);
+    ros_memcpy(eth + ETH_ALEN, fp_get_port_mac(port_type), ETH_ALEN);
+
+    fp_outer_add_vlan(m, port_type);
 
     dpdk_send_packet(m, port_id, func, line);
 }
