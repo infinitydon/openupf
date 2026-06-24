@@ -125,15 +125,20 @@ static inline void fp_outer_add_vlan(void *m, uint8_t port_type)
 inline void __fp_fwd_snd_to_phy(void *m, uint16_t port_id, const char *func, int line)
 {
     uint8_t port_type = port_id < EN_PORT_BUTT ? (uint8_t)port_id : EN_PORT_N3;
+    uint16_t tx_port = port_id;
     uint8_t *eth = rte_pktmbuf_mtod((struct rte_mbuf *)m, uint8_t *);
+
+    if (unlikely(tx_port >= dpdk_get_port_num())) {
+        tx_port = 0;
+    }
 
 	/* dest addr */
     fp_be_copy_port_mac(port_type, eth);
-    ros_memcpy(eth + ETH_ALEN, fp_get_port_mac(port_type), ETH_ALEN);
+    ros_memcpy(eth + ETH_ALEN, fp_get_port_mac((uint8_t)tx_port), ETH_ALEN);
 
     fp_outer_add_vlan(m, port_type);
 
-    dpdk_send_packet(m, port_id, func, line);
+    dpdk_send_packet(m, tx_port, func, line);
 }
 
 void fp_dpdk_add_cblk_buf(void *cblock)
