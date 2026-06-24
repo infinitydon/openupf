@@ -734,7 +734,7 @@ static void lb_internal_pkt_entry(char *buf, int len, struct rte_mbuf *mbuf)
                 dest_mac[0], dest_mac[1], dest_mac[2], dest_mac[3], dest_mac[4], dest_mac[5]);
             lb_mac_updating(mbuf, (struct rte_ether_addr *)lb_local_port_mac[EN_LB_PORT_EXT],
                 (struct rte_ether_addr *)dest_mac);
-            lb_fwd_to_external_network(mbuf);
+            lb_fwd_to_external_network_flush(mbuf);
             return;
         }
 
