@@ -160,20 +160,27 @@ static inline uint16_t lb_port_to_index(uint16_t port)
     return lb_dpdk_port_num == (uint16_t)EN_LB_PORT_BUTT ? (uint16_t)port : 0;
 }
 
-static inline int lb_is_local_l2_frame(const struct pro_eth_hdr *eth, uint16_t port_id)
+static inline int lb_l2_logical_port(const struct pro_eth_hdr *eth, uint16_t port_id, uint16_t *logical_port)
 {
-    const uint8_t *local_mac;
+    uint16_t port;
 
     if (unlikely(port_id >= EN_LB_PORT_BUTT)) {
         return FALSE;
     }
 
+    *logical_port = port_id;
     if (eth->dest[0] & 0x01) {
         return TRUE;
     }
 
-    local_mac = lb_local_port_mac[port_id];
-    return memcmp(eth->dest, local_mac, ETH_ALEN) == 0;
+    for (port = EN_LB_PORT_EXT; port < EN_LB_PORT_BUTT; ++port) {
+        if (memcmp(eth->dest, lb_local_port_mac[port], ETH_ALEN) == 0) {
+            *logical_port = port;
+            return TRUE;
+        }
+    }
+
+    return FALSE;
 }
 
 static inline uint8_t lb_mb_work_state_get(void)
@@ -938,10 +945,12 @@ static inline void lb_external_pkt_entry(char *buf, int len, struct rte_mbuf *mb
 int lb_data_pkt_entry(char *buf, int len, uint16_t port_id, void *arg)
 {
     if (likely(lb_work_flag)) {
+        uint16_t logical_port_id = port_id;
+
         if (likely(len >= (int)sizeof(struct pro_eth_hdr))) {
             struct pro_eth_hdr *eth = (struct pro_eth_hdr *)buf;
 
-            if (unlikely(!lb_is_local_l2_frame(eth, port_id))) {
+            if (unlikely(!lb_l2_logical_port(eth, port_id, &logical_port_id))) {
                 fprintf(stderr,
                     "OPENUPF_LBU_DROP_NONLOCAL port=%u len=%d eth_dst=%02x:%02x:%02x:%02x:%02x:%02x "
                     "local=%02x:%02x:%02x:%02x:%02x:%02x\n",
@@ -953,6 +962,15 @@ int lb_data_pkt_entry(char *buf, int len, uint16_t port_id, void *arg)
                     lb_local_port_mac[port_id][4], lb_local_port_mac[port_id][5]);
                 lb_free_pkt((struct rte_mbuf *)arg);
                 return 0;
+            }
+
+            if (unlikely(logical_port_id != port_id)) {
+                fprintf(stderr,
+                    "OPENUPF_LBU_RECLASSIFY port=%u logical_port=%u len=%d eth_dst=%02x:%02x:%02x:%02x:%02x:%02x\n",
+                    port_id, logical_port_id, len,
+                    eth->dest[0], eth->dest[1], eth->dest[2],
+                    eth->dest[3], eth->dest[4], eth->dest[5]);
+                port_id = logical_port_id;
             }
         }
 
