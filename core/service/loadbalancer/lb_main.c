@@ -18,6 +18,11 @@
 #include "lb_neighbor.h"
 #include "lb_main.h"
 
+#ifdef OPENUPF_TRACE_ENABLE
+#define OPENUPF_TRACE(...) fprintf(stderr, __VA_ARGS__)
+#else
+#define OPENUPF_TRACE(...) ((void)0)
+#endif
 
 /* LoadBalancer work flag */
 static uint64_t lb_work_flag = G_FALSE;
@@ -237,7 +242,7 @@ static inline int lb_recent_pkt_is_duplicate(char *buf, int len, uint16_t port_i
 
     if (entry->sig == sig && entry->len == (uint16_t)len && entry->port_id == port_id &&
         (now - entry->tsc) <= window) {
-        fprintf(stderr, "OPENUPF_LBU_DROP_DUP port=%u len=%d sig=0x%08x\n",
+        OPENUPF_TRACE("OPENUPF_LBU_DROP_DUP port=%u len=%d sig=0x%08x\n",
             port_id, len, sig);
         return TRUE;
     }
@@ -468,7 +473,7 @@ static inline void lb_normalize_internal_ipv4_frame(struct rte_mbuf *mbuf, uint1
     pkt = rte_pktmbuf_mtod(mbuf, uint8_t *);
     memmove(pkt + ETH_HLEN, pkt + ipv4_offset, len - ipv4_offset);
     pkt_buf_set_len(mbuf, len - gap);
-    fprintf(stderr,
+    OPENUPF_TRACE(
         "OPENUPF_LBU_INT_IPV4_NORMALIZE offset=%u gap=%u old_len=%u new_len=%u\n",
         ipv4_offset, gap, len, (uint16_t)(len - gap));
 }
@@ -497,7 +502,7 @@ static inline void lb_fwd_to_external_network_flush(void *m)
 
     dpdk_send_packet(m, port_id, __FUNCTION__, __LINE__);
     sent = dpdk_flush_tx_port(port_id);
-    fprintf(stderr,
+    OPENUPF_TRACE(
         "OPENUPF_LBU_ARP_TX port=%u sent=%d len=%u src=%02x:%02x:%02x:%02x:%02x:%02x dst=%02x:%02x:%02x:%02x:%02x:%02x\n",
         port_id, sent, pkt_len,
         src_mac.addr_bytes[0], src_mac.addr_bytes[1],
@@ -604,34 +609,34 @@ static inline int lb_arp_pkt_proc(struct filter_key *match_key, struct rte_mbuf 
 
         if (arp_dstip == lb_net_local_ip[EN_PORT_N3]) {
             /* N3 ARP */
-            fprintf(stderr, "OPENUPF_LBU_ARP target=%u.%u.%u.%u match=N3\n",
+            OPENUPF_TRACE("OPENUPF_LBU_ARP target=%u.%u.%u.%u match=N3\n",
                 ((uint8_t *)&arp_dstip)[0], ((uint8_t *)&arp_dstip)[1],
                 ((uint8_t *)&arp_dstip)[2], ((uint8_t *)&arp_dstip)[3]);
             LOG(LB, RUNNING, "N3 ARP packet.");
         }
         else if (arp_dstip == lb_net_local_ip[EN_PORT_N6]) {
             /* N6 ARP */
-            fprintf(stderr, "OPENUPF_LBU_ARP target=%u.%u.%u.%u match=N6\n",
+            OPENUPF_TRACE("OPENUPF_LBU_ARP target=%u.%u.%u.%u match=N6\n",
                 ((uint8_t *)&arp_dstip)[0], ((uint8_t *)&arp_dstip)[1],
                 ((uint8_t *)&arp_dstip)[2], ((uint8_t *)&arp_dstip)[3]);
             LOG(LB, RUNNING, "N6 ARP packet");
         }
         else if (arp_dstip == lb_net_local_ip[EN_PORT_N9]) {
-            fprintf(stderr, "OPENUPF_LBU_ARP target=%u.%u.%u.%u match=N9 ignored\n",
+            OPENUPF_TRACE("OPENUPF_LBU_ARP target=%u.%u.%u.%u match=N9 ignored\n",
                 ((uint8_t *)&arp_dstip)[0], ((uint8_t *)&arp_dstip)[1],
                 ((uint8_t *)&arp_dstip)[2], ((uint8_t *)&arp_dstip)[3]);
             LOG(LB, RUNNING, "Ignore N9 ARP packet.");
             return -1;
         }
         else if (arp_dstip == lb_net_local_ip[EN_PORT_N4]) {
-            fprintf(stderr, "OPENUPF_LBU_ARP target=%u.%u.%u.%u match=N4 ignored\n",
+            OPENUPF_TRACE("OPENUPF_LBU_ARP target=%u.%u.%u.%u match=N4 ignored\n",
                 ((uint8_t *)&arp_dstip)[0], ((uint8_t *)&arp_dstip)[1],
                 ((uint8_t *)&arp_dstip)[2], ((uint8_t *)&arp_dstip)[3]);
             LOG(LB, RUNNING, "Ignore N4 ARP packet.");
             return -1;
         }
         else {
-            fprintf(stderr,
+            OPENUPF_TRACE(
                 "OPENUPF_LBU_ARP target=%u.%u.%u.%u match=UNKNOWN n3=%u.%u.%u.%u n6=%u.%u.%u.%u\n",
                 ((uint8_t *)&arp_dstip)[0], ((uint8_t *)&arp_dstip)[1],
                 ((uint8_t *)&arp_dstip)[2], ((uint8_t *)&arp_dstip)[3],
@@ -788,7 +793,7 @@ static void lb_internal_pkt_entry(char *buf, int len, struct rte_mbuf *mbuf)
             lb_neighbor_key key = {0};
 
             if (unlikely(NULL == ipv4)) {
-                fprintf(stderr, "OPENUPF_LBU_INT_IPV4_NOT_FOUND len=%d\n", len);
+                OPENUPF_TRACE("OPENUPF_LBU_INT_IPV4_NOT_FOUND len=%d\n", len);
                 lb_free_pkt(mbuf);
                 return;
             }
@@ -799,7 +804,7 @@ static void lb_internal_pkt_entry(char *buf, int len, struct rte_mbuf *mbuf)
 
             key.v4_value = ipv4->dest;
             lb_get_nexthop_ip(&key.v4_value, &ipv4->source, SESSION_IP_V4);
-            fprintf(stderr,
+            OPENUPF_TRACE(
                 "OPENUPF_LBU_INT_IPV4_DIRECT offset=%u src=%u.%u.%u.%u dst=%u.%u.%u.%u next=%u.%u.%u.%u\n",
                 ipv4_offset,
                 ((uint8_t *)&ipv4->source)[0], ((uint8_t *)&ipv4->source)[1],
@@ -810,7 +815,7 @@ static void lb_internal_pkt_entry(char *buf, int len, struct rte_mbuf *mbuf)
                 ((uint8_t *)&key.v4_value)[2], ((uint8_t *)&key.v4_value)[3]);
 
             if (0 > lb_neighbor_cache_get_mac(&key, dest_mac)) {
-                fprintf(stderr,
+                OPENUPF_TRACE(
                     "OPENUPF_LBU_INT_DIRECT_NEIGH_MISS next=%u.%u.%u.%u\n",
                     ((uint8_t *)&key.v4_value)[0], ((uint8_t *)&key.v4_value)[1],
                     ((uint8_t *)&key.v4_value)[2], ((uint8_t *)&key.v4_value)[3]);
@@ -822,7 +827,7 @@ static void lb_internal_pkt_entry(char *buf, int len, struct rte_mbuf *mbuf)
                 return;
             }
 
-            fprintf(stderr,
+            OPENUPF_TRACE(
                 "OPENUPF_LBU_INT_DIRECT_NEIGH_HIT next=%u.%u.%u.%u mac=%02x:%02x:%02x:%02x:%02x:%02x\n",
                 ((uint8_t *)&key.v4_value)[0], ((uint8_t *)&key.v4_value)[1],
                 ((uint8_t *)&key.v4_value)[2], ((uint8_t *)&key.v4_value)[3],
@@ -851,7 +856,7 @@ dissect_packet:
                     uint32_t orig_dest = ipv4->dest;
 
                     lb_get_nexthop_ip(&key.v4_value, &ipv4->source, SESSION_IP_V4);
-                    fprintf(stderr,
+                    OPENUPF_TRACE(
                         "OPENUPF_LBU_INT_FWD src=%u.%u.%u.%u dst=%u.%u.%u.%u next=%u.%u.%u.%u\n",
                         ((uint8_t *)&ipv4->source)[0], ((uint8_t *)&ipv4->source)[1],
                         ((uint8_t *)&ipv4->source)[2], ((uint8_t *)&ipv4->source)[3],
@@ -861,7 +866,7 @@ dissect_packet:
                         ((uint8_t *)&key.v4_value)[2], ((uint8_t *)&key.v4_value)[3]);
 
                     if (0 > lb_neighbor_cache_get_mac(&key, dest_mac)) {
-                        fprintf(stderr,
+                        OPENUPF_TRACE(
                             "OPENUPF_LBU_INT_NEIGH_MISS next=%u.%u.%u.%u\n",
                             ((uint8_t *)&key.v4_value)[0], ((uint8_t *)&key.v4_value)[1],
                             ((uint8_t *)&key.v4_value)[2], ((uint8_t *)&key.v4_value)[3]);
@@ -872,7 +877,7 @@ dissect_packet:
                         }
                         return;
                     }
-                    fprintf(stderr,
+                    OPENUPF_TRACE(
                         "OPENUPF_LBU_INT_NEIGH_HIT next=%u.%u.%u.%u mac=%02x:%02x:%02x:%02x:%02x:%02x\n",
                         ((uint8_t *)&key.v4_value)[0], ((uint8_t *)&key.v4_value)[1],
                         ((uint8_t *)&key.v4_value)[2], ((uint8_t *)&key.v4_value)[3],
@@ -1032,7 +1037,7 @@ static inline void lb_external_pkt_entry(char *buf, int len, struct rte_mbuf *mb
                              * interface. Send it to a backend FPU so the PFCP session can encapsulate
                              * it toward N3 instead of relying on promiscuous loopback side effects.
                              */
-                            fprintf(stderr, "OPENUPF_LBU_EXT_IPV4_TO_BACKEND src=%u.%u.%u.%u dst=%u.%u.%u.%u\n",
+                            OPENUPF_TRACE("OPENUPF_LBU_EXT_IPV4_TO_BACKEND src=%u.%u.%u.%u dst=%u.%u.%u.%u\n",
                                 (uint8_t)(ipv4->source & 0xff), (uint8_t)((ipv4->source >> 8) & 0xff),
                                 (uint8_t)((ipv4->source >> 16) & 0xff), (uint8_t)((ipv4->source >> 24) & 0xff),
                                 (uint8_t)(dest_ip & 0xff), (uint8_t)((dest_ip >> 8) & 0xff),
@@ -1152,7 +1157,7 @@ static inline void lb_external_pkt_entry(char *buf, int len, struct rte_mbuf *mb
             LOG(LB, ERR, "No ready backend found, drop packet.");
             return;
         }
-        fprintf(stderr, "OPENUPF_LBU_EXT_TO_BACKEND hash=%u dest_mac=%02x:%02x:%02x:%02x:%02x:%02x len=%d\n",
+        OPENUPF_TRACE("OPENUPF_LBU_EXT_TO_BACKEND hash=%u dest_mac=%02x:%02x:%02x:%02x:%02x:%02x len=%d\n",
             hash, dest_mac[0], dest_mac[1], dest_mac[2], dest_mac[3], dest_mac[4], dest_mac[5], len);
         lb_mac_updating(mbuf, (struct rte_ether_addr *)lb_local_port_mac[EN_LB_PORT_INT],
             (struct rte_ether_addr *)dest_mac);
@@ -1182,7 +1187,7 @@ int lb_data_pkt_entry(char *buf, int len, uint16_t port_id, void *arg)
             struct pro_eth_hdr *eth = (struct pro_eth_hdr *)buf;
 
             if (unlikely(!lb_l2_logical_port(eth, port_id, &logical_port_id))) {
-                fprintf(stderr,
+                OPENUPF_TRACE(
                     "OPENUPF_LBU_DROP_NONLOCAL port=%u len=%d eth_dst=%02x:%02x:%02x:%02x:%02x:%02x "
                     "local=%02x:%02x:%02x:%02x:%02x:%02x\n",
                     port_id, len,
@@ -1196,7 +1201,7 @@ int lb_data_pkt_entry(char *buf, int len, uint16_t port_id, void *arg)
             }
 
             if (unlikely(logical_port_id != port_id)) {
-                fprintf(stderr,
+                OPENUPF_TRACE(
                     "OPENUPF_LBU_RECLASSIFY port=%u logical_port=%u len=%d eth_dst=%02x:%02x:%02x:%02x:%02x:%02x\n",
                     port_id, logical_port_id, len,
                     eth->dest[0], eth->dest[1], eth->dest[2],
@@ -1216,7 +1221,7 @@ int lb_data_pkt_entry(char *buf, int len, uint16_t port_id, void *arg)
             struct pro_udp_hdr *udp = (struct pro_udp_hdr *)(ip + 1);
 
             if (eth->eth_type == FLOW_ETH_PRO_IP && ip->protocol == IP_PRO_UDP) {
-                fprintf(stderr,
+                OPENUPF_TRACE(
                     "OPENUPF_LBU_RX port=%u len=%d eth_dst=%02x:%02x:%02x:%02x:%02x:%02x "
                     "ip=%u.%u.%u.%u->%u.%u.%u.%u udp=%u->%u\n",
                     port_id, len,
@@ -1505,7 +1510,7 @@ static int lb_parse_cfg(struct pcf_file *conf)
         lb_net_local_ip[cnt] = htonl(system_cfg->upf_ip[cnt].ipv4);
         lb_host_local_ip[cnt] = system_cfg->upf_ip[cnt].ipv4;
         memcpy(lb_net_local_ipv6[cnt], system_cfg->upf_ip[cnt].ipv6, IPV6_ALEN);
-        fprintf(stderr,
+        OPENUPF_TRACE(
             "OPENUPF_LBU_IP port=%d ip=%u.%u.%u.%u prefix=%u gateway=%u.%u.%u.%u\n",
             cnt,
             ((uint8_t *)&lb_net_local_ip[cnt])[0],

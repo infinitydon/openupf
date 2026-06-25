@@ -24,6 +24,12 @@
 #include "fp_frag.h"
 #include "fp_dns.h"
 
+#ifdef OPENUPF_TRACE_ENABLE
+#define OPENUPF_TRACE(...) fprintf(stderr, __VA_ARGS__)
+#else
+#define OPENUPF_TRACE(...) ((void)0)
+#endif
+
 #ifndef ENABLE_OCTEON_III
 #include "service.h"
 #include <rte_mbuf.h>
@@ -163,7 +169,7 @@ static inline int fp_l2_accept_local_unicast(char *buf, int len, uint16_t port_i
         return G_TRUE;
     }
 
-    fprintf(stderr,
+    OPENUPF_TRACE(
         "OPENUPF_FPU_DROP_NONLOCAL port=%u len=%d eth_dst=%02x:%02x:%02x:%02x:%02x:%02x "
         "local=%02x:%02x:%02x:%02x:%02x:%02x\n",
         port_id, len,
@@ -227,7 +233,7 @@ static inline int fp_recent_pkt_is_duplicate(char *buf, int len, uint16_t port_i
 
     if (entry->sig == sig && entry->len == (uint16_t)len && entry->port_id == port_id &&
         (now - entry->tsc) <= window) {
-        fprintf(stderr, "OPENUPF_FPU_DROP_DUP port=%u len=%d sig=0x%08x\n",
+        OPENUPF_TRACE("OPENUPF_FPU_DROP_DUP port=%u len=%d sig=0x%08x\n",
             port_id, len, sig);
         return G_TRUE;
     }
@@ -303,7 +309,7 @@ int fp_phy_pkt_entry(char *buf, int len, uint16_t port_id, void *arg)
         struct pro_udp_hdr *udp = (struct pro_udp_hdr *)(ip + 1);
 
         if (eth->eth_type == FLOW_ETH_PRO_IP && ip->protocol == IP_PRO_UDP) {
-            fprintf(stderr,
+            OPENUPF_TRACE(
                 "OPENUPF_FPU_RX port=%u len=%d eth_dst=%02x:%02x:%02x:%02x:%02x:%02x "
                 "ip=%u.%u.%u.%u->%u.%u.%u.%u udp=%u->%u\n",
                 port_id, len,

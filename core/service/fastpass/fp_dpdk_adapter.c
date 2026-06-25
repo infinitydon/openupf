@@ -14,6 +14,12 @@
 #include "fp_dpdk_adapter.h"
 #include "fp_backend_mgmt.h"
 
+#ifdef OPENUPF_TRACE_ENABLE
+#define OPENUPF_TRACE(...) fprintf(stderr, __VA_ARGS__)
+#else
+#define OPENUPF_TRACE(...) ((void)0)
+#endif
+
 /* Used for dpdk mode data transmit */
 fp_dpdk_tx_queue fp_dpdk_queue;
 
@@ -150,7 +156,7 @@ inline void __fp_fwd_snd_to_phy(void *m, uint16_t port_id, const char *func, int
         ip = eth + 14;
     }
     if (eth_type == FLOW_ETH_PRO_IP) {
-        fprintf(stderr,
+        OPENUPF_TRACE(
             "OPENUPF_FPU_TX logical_port=%u tx_port=%u len=%u eth_dst=%02x:%02x:%02x:%02x:%02x:%02x "
             "eth_src=%02x:%02x:%02x:%02x:%02x:%02x ip=%u.%u.%u.%u->%u.%u.%u.%u proto=%u\n",
             port_type, tx_port, rte_pktmbuf_pkt_len((struct rte_mbuf *)m),
@@ -158,7 +164,7 @@ inline void __fp_fwd_snd_to_phy(void *m, uint16_t port_id, const char *func, int
             eth[6], eth[7], eth[8], eth[9], eth[10], eth[11],
             ip[12], ip[13], ip[14], ip[15], ip[16], ip[17], ip[18], ip[19], ip[9]);
     } else {
-        fprintf(stderr,
+        OPENUPF_TRACE(
             "OPENUPF_FPU_TX logical_port=%u tx_port=%u len=%u eth_dst=%02x:%02x:%02x:%02x:%02x:%02x "
             "eth_src=%02x:%02x:%02x:%02x:%02x:%02x eth_type=0x%04x\n",
             port_type, tx_port, rte_pktmbuf_pkt_len((struct rte_mbuf *)m),
@@ -169,7 +175,7 @@ inline void __fp_fwd_snd_to_phy(void *m, uint16_t port_id, const char *func, int
     dpdk_send_packet(m, tx_port, func, line);
     sent = dpdk_flush_tx_port(tx_port);
     if (sent) {
-        fprintf(stderr, "OPENUPF_FPU_TX_FLUSH tx_port=%u sent=%d\n", tx_port, sent);
+        OPENUPF_TRACE("OPENUPF_FPU_TX_FLUSH tx_port=%u sent=%d\n", tx_port, sent);
     }
 }
 

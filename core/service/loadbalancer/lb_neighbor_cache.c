@@ -8,6 +8,12 @@
 #include "lb_dpdk_cache.h"
 #include "lb_neighbor_cache.h"
 
+#ifdef OPENUPF_TRACE_ENABLE
+#define OPENUPF_TRACE(...) fprintf(stderr, __VA_ARGS__)
+#else
+#define OPENUPF_TRACE(...) ((void)0)
+#endif
+
 extern uint8_t lb_select_net_port_by_ipv4(uint32_t dest_net_ip);
 
 static lb_neighbor_cache_mgmt g_lb_neighbor_cache_mgmt = {.max_num = 500};
@@ -217,7 +223,7 @@ uint32_t lb_neighbor_build_arp_request(char *buf, uint32_t dest_net_ip)
     uint32_t src_net_ip = lb_get_local_net_ipv4(src_port);
 
     LOG(SESSION, RUNNING, "Build ARP request, target ip: 0x%08x.", ntohl(dest_net_ip));
-    fprintf(stderr,
+    OPENUPF_TRACE(
         "OPENUPF_LBU_ARP_BUILD target=%u.%u.%u.%u src_port=%u src_ip=%u.%u.%u.%u\n",
         ((uint8_t *)&dest_net_ip)[0], ((uint8_t *)&dest_net_ip)[1],
         ((uint8_t *)&dest_net_ip)[2], ((uint8_t *)&dest_net_ip)[3],
