@@ -206,9 +206,40 @@ static inline uint32_t lb_recent_pkt_hash(const char *buf, int len)
 {
     uint32_t hash = 2166136261u;
     int hash_len = len < LB_RECENT_PKT_HASH_BYTES ? len : LB_RECENT_PKT_HASH_BYTES;
+    int outer_ip = -1;
+    int inner_ip = -1;
+    int outer_ihl = 0;
     int i;
 
+    if (len >= (int)(sizeof(struct pro_eth_hdr) + sizeof(struct pro_ipv4_hdr))) {
+        const struct pro_eth_hdr *eth = (const struct pro_eth_hdr *)buf;
+        if (eth->eth_type == FLOW_ETH_PRO_IP) {
+            const uint8_t *ip = (const uint8_t *)buf + sizeof(struct pro_eth_hdr);
+            outer_ip = (int)sizeof(struct pro_eth_hdr);
+            outer_ihl = (ip[0] & 0x0f) * 4;
+            if (outer_ihl >= (int)sizeof(struct pro_ipv4_hdr) &&
+                ip[9] == IP_PRO_UDP &&
+                len >= outer_ip + outer_ihl + (int)sizeof(struct pro_udp_hdr) + 8) {
+                const uint8_t *udp = ip + outer_ihl;
+                if (((uint16_t)udp[2] << 8 | udp[3]) == FLOW_UDP_PORT_GTPU ||
+                    ((uint16_t)udp[0] << 8 | udp[1]) == FLOW_UDP_PORT_GTPU) {
+                    int candidate = outer_ip + outer_ihl + (int)sizeof(struct pro_udp_hdr) + 8;
+                    if (len >= candidate + (int)sizeof(struct pro_ipv4_hdr) &&
+                        ((((const uint8_t *)buf)[candidate] >> 4) == 4)) {
+                        inner_ip = candidate;
+                    }
+                }
+            }
+        }
+    }
+
     for (i = 0; i < hash_len; ++i) {
+        if ((i == outer_ip + 4) || (i == outer_ip + 5) ||
+            (i == outer_ip + 10) || (i == outer_ip + 11) ||
+            (i == inner_ip + 4) || (i == inner_ip + 5) ||
+            (i == inner_ip + 10) || (i == inner_ip + 11)) {
+            continue;
+        }
         hash ^= (uint8_t)buf[i];
         hash *= 16777619u;
     }
