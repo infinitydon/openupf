@@ -26,7 +26,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 WORKDIR /src/openupf
 COPY . .
-RUN DPDK_MESON_ARGS="-Dtests=false" ./build/build.sh
+ARG OPENUPF_TRACE_ENABLE=0
+RUN if [ "${OPENUPF_TRACE_ENABLE}" = "1" ]; then \
+      export CFLAGS="${CFLAGS} -DOPENUPF_TRACE_ENABLE"; \
+    fi; \
+    DPDK_MESON_ARGS="-Dtests=false" ./build/build.sh
 
 FROM ubuntu:22.04
 
