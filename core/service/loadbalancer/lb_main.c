@@ -289,6 +289,56 @@ static inline int lb_recent_pkt_is_duplicate(char *buf, int len, uint16_t port_i
     return FALSE;
 }
 
+static inline uint32_t lb_recent_ipv4_hash(const char *buf, int len)
+{
+    uint32_t hash = 2166136261u;
+    int hash_len = len < LB_RECENT_PKT_HASH_BYTES ? len : LB_RECENT_PKT_HASH_BYTES;
+    int i;
+
+    for (i = 0; i < hash_len; ++i) {
+        if (i == 4 || i == 5 || i == 8 || i == 10 || i == 11) {
+            continue;
+        }
+        hash ^= (uint8_t)buf[i];
+        hash *= 16777619u;
+    }
+    hash ^= (uint32_t)len;
+    hash *= 16777619u;
+
+    return hash;
+}
+
+static inline int lb_recent_ipv4_is_duplicate(char *buf, int len, uint16_t key)
+{
+    lb_recent_pkt_key *entry;
+    uint64_t now;
+    uint64_t window;
+    uint32_t sig;
+
+    if (unlikely(len < (int)sizeof(struct pro_ipv4_hdr))) {
+        return FALSE;
+    }
+
+    sig = lb_recent_ipv4_hash(buf, len);
+    entry = &lb_recent_pkt[sig & (LB_RECENT_PKT_SLOTS - 1)];
+    now = rte_get_tsc_cycles();
+    window = (rte_get_tsc_hz() / 1000000ULL) * LB_RECENT_PKT_WINDOW_US;
+
+    if (entry->sig == sig && entry->len == (uint16_t)len && entry->port_id == key &&
+        (now - entry->tsc) <= window) {
+        OPENUPF_TRACE("OPENUPF_LBU_DROP_DIRECT_DUP key=%u len=%d sig=0x%08x\n",
+            key, len, sig);
+        return TRUE;
+    }
+
+    entry->sig = sig;
+    entry->len = (uint16_t)len;
+    entry->port_id = key;
+    entry->tsc = now;
+
+    return FALSE;
+}
+
 static inline uint8_t lb_mb_work_state_get(void)
 {
     return lb_mb_is_working;
@@ -866,6 +916,11 @@ static void lb_internal_pkt_entry(char *buf, int len, struct rte_mbuf *mbuf)
                 ((uint8_t *)&key.v4_value)[0], ((uint8_t *)&key.v4_value)[1],
                 ((uint8_t *)&key.v4_value)[2], ((uint8_t *)&key.v4_value)[3],
                 dest_mac[0], dest_mac[1], dest_mac[2], dest_mac[3], dest_mac[4], dest_mac[5]);
+            if (unlikely(lb_recent_ipv4_is_duplicate((char *)ipv4, len - (int)ipv4_offset,
+                EN_LB_PORT_BUTT))) {
+                lb_free_pkt(mbuf);
+                return;
+            }
             lb_normalize_internal_ipv4_frame(mbuf, ipv4_offset);
             lb_mac_updating(mbuf, (struct rte_ether_addr *)lb_local_port_mac[EN_LB_PORT_EXT],
                 (struct rte_ether_addr *)dest_mac);
