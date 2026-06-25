@@ -225,9 +225,12 @@ static inline uint32_t fp_recent_pkt_hash(const char *buf, int len)
     }
 
     for (i = 0; i < hash_len; ++i) {
-        if ((i == outer_ip + 4) || (i == outer_ip + 5) ||
+        if (i < 12 ||
+            (i == outer_ip + 4) || (i == outer_ip + 5) ||
+            (i == outer_ip + 8) ||
             (i == outer_ip + 10) || (i == outer_ip + 11) ||
             (i == inner_ip + 4) || (i == inner_ip + 5) ||
+            (i == inner_ip + 8) ||
             (i == inner_ip + 10) || (i == inner_ip + 11)) {
             continue;
         }
