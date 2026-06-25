@@ -12,6 +12,12 @@ OpenUPF uses [DPDK](https://github.com/DPDK/dpdk.git) to forward packets to ache
 
 ![OpenUPF Architecture](/images/openupf_architecture.png)
 
+## Kubernetes/Open5GS DRA Lab
+
+This branch includes Kubernetes bring-up fixes and validation notes for running
+OpenUPF as the UPF behind Open5GS SMF with DRA networking. See
+[Kubernetes Open5GS DRA Lab Notes](doc/kubernetes_open5gs_dra_lab.md).
+
 ## Features list
 
 |**Supported**|**UP Function Features**                                                                              |
