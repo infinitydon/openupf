@@ -201,6 +201,7 @@ typedef struct lb_recent_pkt_key {
 } lb_recent_pkt_key;
 
 static lb_recent_pkt_key lb_recent_pkt[LB_RECENT_PKT_SLOTS];
+static lb_recent_pkt_key lb_recent_ipv4_pkt[LB_RECENT_PKT_SLOTS];
 
 static inline uint32_t lb_recent_pkt_hash(const char *buf, int len)
 {
@@ -270,7 +271,7 @@ static inline int lb_recent_pkt_is_duplicate(char *buf, int len, uint16_t port_i
     }
 
     sig = lb_recent_pkt_hash(buf, len);
-    entry = &lb_recent_pkt[sig & (LB_RECENT_PKT_SLOTS - 1)];
+    entry = &lb_recent_ipv4_pkt[sig & (LB_RECENT_PKT_SLOTS - 1)];
     now = rte_get_tsc_cycles();
     window = (rte_get_tsc_hz() / 1000000ULL) * LB_RECENT_PKT_WINDOW_US;
 
