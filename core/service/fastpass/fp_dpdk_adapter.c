@@ -17,7 +17,7 @@
 #ifdef OPENUPF_TRACE_ENABLE
 #define OPENUPF_TRACE(...) fprintf(stderr, __VA_ARGS__)
 #else
-#define OPENUPF_TRACE(...) ((void)0)
+#define OPENUPF_TRACE(...) do { if (0) fprintf(stderr, __VA_ARGS__); } while (0)
 #endif
 
 /* Used for dpdk mode data transmit */
