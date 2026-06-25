@@ -16,7 +16,7 @@
 
 /* Less than or equal to LB_MAX_LISTEN_NUMBER is required */
 #define COMM_MSG_BACKEND_NUMBER             (256)
-#define COMM_MSG_BACKEND_START_INDEX        (0)
+#define COMM_MSG_BACKEND_START_INDEX        (1)
 
 #define	COMM_SIGNALING_TRACE_FILE_NAME		"/tmp/signaling_trace.pcap"
 
