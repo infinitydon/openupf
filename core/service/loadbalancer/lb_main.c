@@ -184,6 +184,72 @@ static inline int lb_l2_logical_port(const struct pro_eth_hdr *eth, uint16_t por
     return FALSE;
 }
 
+#define LB_RECENT_PKT_SLOTS 1024
+#define LB_RECENT_PKT_WINDOW_US 50000
+#define LB_RECENT_PKT_HASH_BYTES 128
+
+typedef struct lb_recent_pkt_key {
+    uint32_t sig;
+    uint16_t len;
+    uint16_t port_id;
+    uint64_t tsc;
+} lb_recent_pkt_key;
+
+static lb_recent_pkt_key lb_recent_pkt[LB_RECENT_PKT_SLOTS];
+
+static inline uint32_t lb_recent_pkt_hash(const char *buf, int len)
+{
+    uint32_t hash = 2166136261u;
+    int hash_len = len < LB_RECENT_PKT_HASH_BYTES ? len : LB_RECENT_PKT_HASH_BYTES;
+    int i;
+
+    for (i = 0; i < hash_len; ++i) {
+        hash ^= (uint8_t)buf[i];
+        hash *= 16777619u;
+    }
+    hash ^= (uint32_t)len;
+    hash *= 16777619u;
+
+    return hash;
+}
+
+static inline int lb_recent_pkt_is_duplicate(char *buf, int len, uint16_t port_id)
+{
+    struct pro_eth_hdr *eth;
+    lb_recent_pkt_key *entry;
+    uint64_t now;
+    uint64_t window;
+    uint32_t sig;
+
+    if (unlikely(len < (int)(sizeof(struct pro_eth_hdr) + sizeof(struct pro_ipv4_hdr)))) {
+        return FALSE;
+    }
+
+    eth = (struct pro_eth_hdr *)buf;
+    if (eth->dest[0] & 0x01) {
+        return FALSE;
+    }
+
+    sig = lb_recent_pkt_hash(buf, len);
+    entry = &lb_recent_pkt[sig & (LB_RECENT_PKT_SLOTS - 1)];
+    now = rte_get_tsc_cycles();
+    window = (rte_get_tsc_hz() / 1000000ULL) * LB_RECENT_PKT_WINDOW_US;
+
+    if (entry->sig == sig && entry->len == (uint16_t)len && entry->port_id == port_id &&
+        (now - entry->tsc) <= window) {
+        fprintf(stderr, "OPENUPF_LBU_DROP_DUP port=%u len=%d sig=0x%08x\n",
+            port_id, len, sig);
+        return TRUE;
+    }
+
+    entry->sig = sig;
+    entry->len = (uint16_t)len;
+    entry->port_id = port_id;
+    entry->tsc = now;
+
+    return FALSE;
+}
+
 static inline uint8_t lb_mb_work_state_get(void)
 {
     return lb_mb_is_working;
@@ -1136,6 +1202,11 @@ int lb_data_pkt_entry(char *buf, int len, uint16_t port_id, void *arg)
                     eth->dest[0], eth->dest[1], eth->dest[2],
                     eth->dest[3], eth->dest[4], eth->dest[5]);
                 port_id = logical_port_id;
+            }
+
+            if (unlikely(lb_recent_pkt_is_duplicate(buf, len, port_id))) {
+                lb_free_pkt((struct rte_mbuf *)arg);
+                return 0;
             }
         }
 
