@@ -174,6 +174,72 @@ static inline int fp_l2_accept_local_unicast(char *buf, int len, uint16_t port_i
     return G_FALSE;
 }
 
+#define FP_RECENT_PKT_SLOTS 1024
+#define FP_RECENT_PKT_WINDOW_US 50000
+#define FP_RECENT_PKT_HASH_BYTES 128
+
+typedef struct fp_recent_pkt_key {
+    uint32_t sig;
+    uint16_t len;
+    uint16_t port_id;
+    uint64_t tsc;
+} fp_recent_pkt_key;
+
+static fp_recent_pkt_key fp_recent_pkt[FP_RECENT_PKT_SLOTS];
+
+static inline uint32_t fp_recent_pkt_hash(const char *buf, int len)
+{
+    uint32_t hash = 2166136261u;
+    int hash_len = len < FP_RECENT_PKT_HASH_BYTES ? len : FP_RECENT_PKT_HASH_BYTES;
+    int i;
+
+    for (i = 0; i < hash_len; ++i) {
+        hash ^= (uint8_t)buf[i];
+        hash *= 16777619u;
+    }
+    hash ^= (uint32_t)len;
+    hash *= 16777619u;
+
+    return hash;
+}
+
+static inline int fp_recent_pkt_is_duplicate(char *buf, int len, uint16_t port_id)
+{
+    struct pro_eth_hdr *eth;
+    fp_recent_pkt_key *entry;
+    uint64_t now;
+    uint64_t window;
+    uint32_t sig;
+
+    if (unlikely(len < (int)(sizeof(struct pro_eth_hdr) + sizeof(struct pro_ipv4_hdr)))) {
+        return G_FALSE;
+    }
+
+    eth = (struct pro_eth_hdr *)buf;
+    if (eth->dest[0] & 0x01) {
+        return G_FALSE;
+    }
+
+    sig = fp_recent_pkt_hash(buf, len);
+    entry = &fp_recent_pkt[sig & (FP_RECENT_PKT_SLOTS - 1)];
+    now = rte_get_tsc_cycles();
+    window = (rte_get_tsc_hz() / 1000000ULL) * FP_RECENT_PKT_WINDOW_US;
+
+    if (entry->sig == sig && entry->len == (uint16_t)len && entry->port_id == port_id &&
+        (now - entry->tsc) <= window) {
+        fprintf(stderr, "OPENUPF_FPU_DROP_DUP port=%u len=%d sig=0x%08x\n",
+            port_id, len, sig);
+        return G_TRUE;
+    }
+
+    entry->sig = sig;
+    entry->len = (uint16_t)len;
+    entry->port_id = port_id;
+    entry->tsc = now;
+
+    return G_FALSE;
+}
+
 void fp_forward_pkt_to_sp(fp_packet_info *pkt_info, fp_fast_entry *entry,
     int trace_flag, uint8_t pkt_type)
 {
@@ -222,6 +288,11 @@ int fp_phy_pkt_entry(char *buf, int len, uint16_t port_id, void *arg)
     fp_packet_info      pkt_info = {.buf = buf, .len = len, .arg = arg, .port_id = port_id};
 
     if (unlikely(!fp_l2_accept_local_unicast(buf, len, port_id))) {
+        fp_free_pkt(arg);
+        return 0;
+    }
+
+    if (unlikely(fp_recent_pkt_is_duplicate(buf, len, port_id))) {
         fp_free_pkt(arg);
         return 0;
     }
