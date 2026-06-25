@@ -961,9 +961,17 @@ static inline void lb_external_pkt_entry(char *buf, int len, struct rte_mbuf *mb
                                     return;
                             }
                         } else {
-                            LOG(LB, DEBUG, "Packets with non local destination address are not processed.\n");
-                            lb_free_pkt(mbuf);
-                            return;
+                            /*
+                             * N6 return traffic is addressed to the UE pool rather than a UPF-local
+                             * interface. Send it to a backend FPU so the PFCP session can encapsulate
+                             * it toward N3 instead of relying on promiscuous loopback side effects.
+                             */
+                            fprintf(stderr, "OPENUPF_LBU_EXT_IPV4_TO_BACKEND src=%u.%u.%u.%u dst=%u.%u.%u.%u\n",
+                                (uint8_t)(ipv4->source & 0xff), (uint8_t)((ipv4->source >> 8) & 0xff),
+                                (uint8_t)((ipv4->source >> 16) & 0xff), (uint8_t)((ipv4->source >> 24) & 0xff),
+                                (uint8_t)(dest_ip & 0xff), (uint8_t)((dest_ip >> 8) & 0xff),
+                                (uint8_t)((dest_ip >> 16) & 0xff), (uint8_t)((dest_ip >> 24) & 0xff));
+                            hash = lb_clac_hash(&dest_ip, 0, COMM_MSG_FAST_IPV4);
                         }
                     }
                     break;
@@ -1078,6 +1086,8 @@ static inline void lb_external_pkt_entry(char *buf, int len, struct rte_mbuf *mb
             LOG(LB, ERR, "No ready backend found, drop packet.");
             return;
         }
+        fprintf(stderr, "OPENUPF_LBU_EXT_TO_BACKEND hash=%u dest_mac=%02x:%02x:%02x:%02x:%02x:%02x len=%d\n",
+            hash, dest_mac[0], dest_mac[1], dest_mac[2], dest_mac[3], dest_mac[4], dest_mac[5], len);
         lb_mac_updating(mbuf, (struct rte_ether_addr *)lb_local_port_mac[EN_LB_PORT_INT],
             (struct rte_ether_addr *)dest_mac);
         lb_fwd_to_internal_network(mbuf);
