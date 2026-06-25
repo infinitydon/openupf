@@ -48,8 +48,9 @@ tunnel completed with 0% loss, and both FPUs showed non-zero `UP_RECV` and
 The companion chart work is in:
 
 ```text
-https://github.com/infinitydon/telco-helm-charts/tree/codex/open5gs-openupf-core-test/open5gs-5g-dra
+https://github.com/infinitydon/telco-helm-charts/tree/main/open5gs-openupf-dra
 ```
 
-Use `values-openupf-core.yaml` from that branch for the tested Open5GS plus
-OpenUPF profile.
+Use the chart's `values.yaml` as the tested Open5GS plus OpenUPF profile and
+adjust the node selector, service ClusterIPs, and DPDK VF PCI addresses for the
+target lab.
